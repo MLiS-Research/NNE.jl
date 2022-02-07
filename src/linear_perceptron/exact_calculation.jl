@@ -3,9 +3,6 @@ using LinearAlgebra
 using Random
 using ForwardDiff
 include("data_generation.jl")
-
-
-loss(W, X, y) = sum((W*X-y).^2)/2 ./ size(X, 2)
 calculate_γ(X) = X*transpose(X) ./ size(X, 2)
 calculate_λ(X, y) = X*transpose(y) ./ size(X, 2)
 calculate_C(y) = tr(y*transpose(y)) ./ size(y, 2)
@@ -111,9 +108,8 @@ struct LinearProblem
     C
 end
 
-function construct_problem(seed=1234, N=256, noise=0.0)
-    rng = Random.MersenneTwister(seed)
-    x,y,w = generate_data(1,1, N, noise; rng=rng)
+function construct_problem(seed=1234)
+    x,y,w = generate_seeded_data(seed)
     γ = calculate_γ(x)
     λ = calculate_λ(x, y)
     C = calculate_C(y)

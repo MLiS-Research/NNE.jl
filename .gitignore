@@ -26,3 +26,6 @@ Manifest.toml
 
 # VSCODE
 .vscode/
+
+# Large files
+results/large/
