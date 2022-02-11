@@ -1,1 +1,1 @@
-# nne-trajectory-sampling-code
+# Neural Network Ensembles (NNEs) as realised through trajectory sampling techniques
