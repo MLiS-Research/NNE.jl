@@ -13,8 +13,13 @@ function load_exact_linear_data()
     return s_values, t_values, sigma, problem, losses
 end
 
-function construct_exact_linear_data_loss_vs_s_plot()
+function construct_exact_linear_data_loss_vs_s_plot(;max_s=nothing)
     s_values, t_values, _, _, losses = load_exact_linear_data()
+    if max_s !== nothing
+        selection_indices = s_values.<=max_s
+        s_values = s_values[selection_indices]
+        losses = losses[selection_indices, :]
+    end
     plt = plot_s_graph(s_values, t_values, losses; linestyle=:dash)
     return plt
 end

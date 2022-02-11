@@ -41,7 +41,11 @@ function construct_algorithm(τ, s, σ)
     if τ==1
         return get_guassian_mh_alg(s, σ)
     else
-        return MetropolisHastings.get_shooting_mh_alg(s, σ)
+        if τ < 4
+            return MetropolisHastings.get_shooting_mh_alg(s, σ)
+        else
+            return MetropolisHastings.get_shooting_and_bridging_mh_alg(s, σ; fraction_to_include=0.5, max_width=4)
+        end
     end
 end
 
