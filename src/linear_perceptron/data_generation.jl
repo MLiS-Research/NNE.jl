@@ -16,3 +16,11 @@ end
 @inline function predict(W, X, y)
     W*X+y
 end
+
+function generate_seeded_data(seed=1234, Dx=1, Dy=1, N=256, noise=0.0)
+    rng = Random.MersenneTwister(seed)
+    x,y,w = generate_data(Dx,Dy, N, noise; rng=rng)
+    return x,y,w
+end
+
+loss(W, x, y) = sum((W*x-y).^2)/2 ./ size(x, 2)
