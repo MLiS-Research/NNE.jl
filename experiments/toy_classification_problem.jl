@@ -27,6 +27,12 @@ function solve_toy_tps(s, τ, σ; epochs=10000)
 
     return solution
 end
+function run_no_heuristics(s, τ, σ; epochs=10000)
+    problem = construct_toy_problem(τ, σ)
+    alg = construct_toy_algorithm(τ, s, σ)
+    solution = solve(problem, alg, epochs)
+    return solution
+end
 
 function main(;execution_mode::TaskExecutionMode=SerialMode, show_progress=true)
     min_s = 0.01
@@ -40,4 +46,34 @@ function main(;execution_mode::TaskExecutionMode=SerialMode, show_progress=true)
     iter = collect(product(s_values, t_values, [σ]))
     results = get_results(fn, iter, execution_mode; show_progress)
     @save "results/large/tps_toy_classification.bson" s_values t_values σ results
+end
+
+function get_file_path(id)
+    if id > 0
+        return "results/large/tps_toy_classification_run_$id.bson"
+    else
+        return "results/large/tps_toy_classification.bson"
+    end
+end
+
+function load_tps_toy_data(;id=0)
+    s_values = nothing
+    t_values = nothing
+    σ = nothing
+    results = nothing
+    @load get_file_path(id) s_values t_values σ results
+    results = results[:,:,1] # Collapse the sigma dimension
+    return s_values, t_values, σ, results
+end
+
+function rerun_from_save(;execution_mode::TaskExecutionMode=SerialMode, show_progress=true, epochs=100000, initial_id=0)
+    s_values, t_values, σ, results = load_tps_toy_data(;id=initial_id)
+    fn(x...) = run_no_heuristics(x...; epochs=epochs)
+    iter = collect(product(s_values, t_values, [σ]))
+    results = get_results(fn, iter, execution_mode; show_progress)
+    id = 1
+    while isfile(get_file_path(id))
+        id+=1
+    end
+    @save get_file_path(id) s_values t_values σ results
 end
