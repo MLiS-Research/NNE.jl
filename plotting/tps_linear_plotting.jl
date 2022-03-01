@@ -20,7 +20,8 @@ end
 function process_tps_linear_data_and_save()
     s_values, t_values, σ, results, losses = load_tps_linear_data()
     times_arr = hcat(repeat(t_values', length(s_values)))
-    losses = get_avg_loss.(results; skip=0) ./ times_arr
+    get_last_n_losses(solution, n) = mean(solution.observations[(end-n):end])
+    losses = (x->get_last_n_losses(x, 50000)).(results) ./ times_arr
 
     @save "results/tps_linear_reduced_data.bson" s_values t_values σ losses
     nothing
