@@ -4,6 +4,7 @@ using LaTeXStrings
 using TPS.MetropolisHastings
 using TPS.DiscreteTrajectory
 using Random
+include("plotting_style.jl")
 
 function generate_single_parameter_problem(τ, σ; rng=Random.GLOBAL_RNG)
     states = [[0.0]]
@@ -45,15 +46,27 @@ function main_plot(seed=1234)
 
     plots = Dict{Symbol, Any}()
     for (key, value) in perturbations
-        plt = plot_parameter_trajectory(states, label="Original", linealpha=1.0, markershape=:diamond)
+        plt = plot_parameter_trajectory(states, label=L"\omega", markershape=:utriangle)
         traj = get_trajectory(value)
-        plot_parameter_trajectory(traj; new_plot=false, label="Perturbation", linealpha=1.0, markershape=:circle)
+        plot_parameter_trajectory(traj; new_plot=false, label=L"\omega'", markershape=:circle)
+        
+        plot!(;yticks=false, xticks=false, legend=:topleft)
+        # if key != :bridge
+        #     plot!(;legend=false)
+        #     ylabel!("") # Turn off the y label
+        # else
+        #     plot!(;legend=:topleft)
+        # end
+
         plots[key] = plt
     end
 
     layout = @layout [a b c]
 
-    plt = plot(plots[:backwards], plots[:forwards], plots[:bridge], legend=true, layout=layout, title=["(a)" "(b)" "(c)"], titleloc=:left, lw=2, size=(800, 400))
+    plot_defaults = get_plot_defaults_full_width()
 
+    plt = plot(plots[:backwards], plots[:forwards], plots[:bridge]; layout=layout, title=["(a)" "(b)" "(c)"], link=:y, titleloc=:left, plot_defaults...)
+
+    savefig(plt, "figures/bridge_explanation_figure.pdf")
     return plt
 end
