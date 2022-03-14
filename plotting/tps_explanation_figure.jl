@@ -51,12 +51,6 @@ function main_plot(seed=1234)
         plot_parameter_trajectory(traj; new_plot=false, label=L"\omega'", markershape=:circle)
         
         plot!(;yticks=false, xticks=false, legend=:topleft)
-        # if key != :bridge
-        #     plot!(;legend=false)
-        #     ylabel!("") # Turn off the y label
-        # else
-        #     plot!(;legend=:topleft)
-        # end
 
         plots[key] = plt
     end
