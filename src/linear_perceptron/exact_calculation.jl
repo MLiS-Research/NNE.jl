@@ -113,6 +113,7 @@ function construct_problem(seed=1234)
     γ = calculate_γ(x)
     λ = calculate_λ(x, y)
     C = calculate_C(y)
+    N = size(y)[end]
     return LinearProblem(x, y, w, N, γ, λ, C)
 end
 
