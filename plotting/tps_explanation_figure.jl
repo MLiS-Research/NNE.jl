@@ -61,6 +61,6 @@ function main_plot(seed=1234)
 
     plt = plot(plots[:backwards], plots[:forwards], plots[:bridge]; layout=layout, title=["(a)" "(b)" "(c)"], link=:y, titleloc=:left, plot_defaults...)
 
-    savefig(plt, "figures/bridge_explanation_figure.pdf")
+    savefig(plt, "figures/perturbation_examples.pdf")
     return plt
 end
