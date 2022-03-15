@@ -44,11 +44,20 @@ function construct_tps_data_loss_vs_s_plot()
     s_values, t_values, _, losses = load_processed_tps_data()
     max_s = maximum(s_values)
     plt = construct_exact_linear_data_loss_vs_s_plot(;max_s=max_s)
-    plt = plot_s_graph(s_values, t_values, losses; new_plot=false, markershape=[:utriangle :rect :dtriangle :circle], linecolor=nothing)
+    markers = [:utriangle :rect :dtriangle :circle]
+    plt = plot_s_graph(s_values, t_values, losses; 
+        new_plot=false,
+        markershape=markers,
+        linecolor=nothing,
+        legend_column=2
+    )
+    labels = [a.plotattributes[:label] for a in plt.subplots[begin].series_list]
+    plot!(plt, label=reshape(labels, 2, :))
     return plt
 end
 
 function plot_tps_linear_figure()
     plt = construct_tps_data_loss_vs_s_plot()
     savefig(plt, "figures/tps_linear_perceptron.pdf")
+    return plt
 end

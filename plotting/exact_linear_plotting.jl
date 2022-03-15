@@ -27,4 +27,5 @@ end
 function plot_exact_linear_figure()
     plt = construct_exact_linear_data_loss_vs_s_plot()
     savefig(plt, "figures/exact_linear_perceptron.pdf")
+    return plt
 end
