@@ -5,13 +5,6 @@ using TPS
 using ProgressMeter
 using Flux
 
-struct EmptyProblem <: TPS.TPSProblem
-    initial_state
-end
-
-struct EmptyAlgorithm <: TPS.TPSAlgorithm
-end
-
 function dict_to_cpu(dict)
     dict[:initial_state] = TPS.get_initial_state(dict[:solution].problem)
     dict[:observations] = dict[:solution].observations |> cpu
