@@ -23,7 +23,10 @@ end
 function map_params_to_trajectory(kwargs)
     if haskey(kwargs, :τ) && kwargs[:τ] == 1
         delete!(kwargs, :τ)
-        return dict_to_cpu(solve_mnist_sa_automatic(;kwargs...))
+        if haskey(kwargs, :max_epochs)
+            kwargs[:epochs] = kwargs[:max_epochs]
+        end
+        return dict_to_cpu(solve_mnist_sa(;kwargs...))
     else
         return dict_to_cpu(solve_mnist_trajectory_automatic(;kwargs...))
     end

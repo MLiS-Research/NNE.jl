@@ -92,13 +92,18 @@ function create_mnist_trajectory_state_and_loss(trajectory_length, σ, n_samples
 end
 
 
-function solve_mnist_sa(;s=500.0, σ=0.001, epochs=100000, n_samples=4096, device=cpu, outputs=2, show_progress=true)
+function solve_mnist_sa(;s=500.0, σ=0.001, epochs=100000, n_samples=4096, fraction_to_include=1.0, device=cpu, outputs=2, show_progress=true, kwargs...)
     problem, info = create_mnist_sa_problem(n_samples; device, outputs)
-    alg = get_guassian_mh_alg(s, σ);
+    alg = get_guassian_mh_alg(s, σ; fraction_to_include);
     iter = show_progress ? ProgressBar(1:epochs) : epochs
     solution = solve(problem, alg, iter)
-
-    return solution, info
+    info[:extra_kwargs] = kwargs
+    info[:solution] = solution
+    info[:s] = s
+    info[:σ] = σ
+    info[:τ] = 1
+    info[:max_epochs] = epochs
+    return info
 end
 
 function solve_mnist_sa_automatic(;s=200.0, σ=0.001, n_samples=2048, device=cpu, outputs=2, fraction_to_include=1.0, warmup_steps=0, polling_frequency=1, max_buffer_size=10000, relative_gradient_size=1e-4, relative_error_size=2e-2, max_epochs=100000)
