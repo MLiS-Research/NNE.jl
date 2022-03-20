@@ -19,10 +19,10 @@ function get_experiment_parameter_dictionaries()
     trajectory_lengths = [1, 2, 4, 8, 16]
     options = Dict{Symbol, Any}()
     options[:fraction_to_include] = 0.25
-    options[:warmup_steps] = 75000
+    options[:warmup_steps] = 5000
     options[:polling_frequency] = 100
     options[:max_buffer_size] = 400000
-    options[:max_epochs] = 500000
+    options[:max_epochs] = 20000
     options[:relative_gradient_size] = 1e-7
     options[:relative_error_size] = 1e-3
     options[:device] = gpu
@@ -47,8 +47,8 @@ function mnist_trajectory_experiment(; execution_mode=:serial)
         progress = Progress(length(results))
         Threads.@threads for i in 1:length(results)
             results[i] = map_params_to_trajectory(input_dictionaries[i])
-            GC.gc()
-            CUDA.reclaim()
+            # GC.gc()
+            # CUDA.reclaim()
             next!(progress)
         end
         return results
