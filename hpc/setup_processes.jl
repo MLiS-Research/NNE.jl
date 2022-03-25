@@ -10,8 +10,8 @@ function parse_commandline()
     @add_arg_table arg_settings begin
         "--include_file"
             help = "The path to the file which should be included on each worker."
-            required = true
             arg_type = String
+            default = nothing
         "--working_dir"
             help = "Path to the current working directory."
             arg_type = String
@@ -46,7 +46,7 @@ for (arg, val) in parsed_args
 end
 
 skip_activate = parsed_args["skip_activate_env"]
-include_file = abspath(parsed_args["include_file"])
+include_file = parsed_args["include_file"]
 run_file = parsed_args["run_file"]
 eval_code = parsed_args["eval_code"]
 working_dir = parsed_args["working_dir"]
@@ -65,14 +65,17 @@ if !isnothing(working_dir)
     eval(Meta.parse("@everywhere cd(\"$working_dir\");"))
 end
 
-println("Activating environments at $(pwd())")
 if !skip_activate
+    println("Activating environments at $(pwd())")
     @everywhere using Pkg;
     @everywhere Pkg.activate(".");
 end
 
-println("Including $include_file")
-eval(Meta.parse("@everywhere include(\"$include_file\");"))
+if !isnothing(include_file)
+    include_file = abspath(include_file)
+    println("Including $include_file")
+    eval(Meta.parse("@everywhere include(\"$include_file\");"))
+end
 
 if !isnothing(run_file)
     run_file = abspath(run_file)
