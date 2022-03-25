@@ -1,5 +1,6 @@
 using Distributed
 @everywhere include("distributed/mnist_runner.jl")
+include("run_helper.jl")
 import Base.Iterators: product
 using BSON: @save, @load, parse
 using ProgressMeter
@@ -15,7 +16,7 @@ function get_experiment_parameter_dictionaries()
     s_min = 0.01
     s_max = 5.0
     num_s_values = 11
-    s_values = 10.0 .^ (LinRange(log10(s_min), log10(s_max), num_s_values))
+    s_values = get_exponentially_spaced(s_min, s_max, num_s_values)
     trajectory_lengths = [1, 2, 4, 8, 16]
     options = Dict{Symbol, Any}()
     options[:fraction_to_include] = 0.25
@@ -83,6 +84,15 @@ end
 
 function run_mnist_problem(; execution_mode=:serial)
     results = mnist_trajectory_experiment(;execution_mode)
+    try
+        git_hash = get_git_hash()
+        for r in results
+            r[:git_hash] = git_hash
+        end
+    catch
+        println("Was not able to get Git hash.")
+    end
+
 
     save_results("results/large/mnist_data_1.bson", results)
 end
