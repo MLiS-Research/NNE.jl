@@ -29,3 +29,6 @@ Manifest.toml
 
 # Large files
 results/large/
+
+# Cluster .out files:
+*.out

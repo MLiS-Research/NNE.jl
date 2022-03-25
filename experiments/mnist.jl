@@ -2,17 +2,18 @@ using Distributed
 @everywhere include("distributed/mnist_runner.jl")
 include("run_helper.jl")
 import Base.Iterators: product
-using BSON: @save, @load, parse
+using BSON: @save, @load
 using ProgressMeter
 using Statistics
 using Flux
 using CUDA
 using TPS
 using NNE
+using NNE.Runner
 using TPS.Convergence
 
 
-function get_experiment_parameter_dictionaries()
+function get_experiment_parameter_dictionaries(;device=:gpu)
     s_min = 0.01
     s_max = 5.0
     num_s_values = 11
@@ -20,15 +21,11 @@ function get_experiment_parameter_dictionaries()
     trajectory_lengths = [1, 2, 4, 8, 16]
     options = Dict{Symbol, Any}()
     options[:fraction_to_include] = 0.25
-    options[:warmup_steps] = 5000
-    options[:polling_frequency] = 100
-    options[:max_buffer_size] = 400000
-    options[:max_epochs] = 20000
-    options[:relative_gradient_size] = 1e-7
-    options[:relative_error_size] = 1e-3
-    options[:device] = gpu
-    options[:n_samples] = 512
+    options[:epochs] = 1_000_000
+    options[:device] = device
+    options[:n_samples] = 2048
     options[:outputs] = 2
+    options[:σ] = 0.05
     function construct_dict(s, τ)
         new_options = deepcopy(options)
         new_options[:s] = s
@@ -39,41 +36,10 @@ function get_experiment_parameter_dictionaries()
     return input_dictionaries
 end
 
-function mnist_trajectory_experiment(; execution_mode=:serial)
-    input_dictionaries = get_experiment_parameter_dictionaries()
-
-    # Threaded
-    if execution_mode==:threaded
-        results = convert(Matrix{Any}, similar(input_dictionaries))
-        progress = Progress(length(results))
-        Threads.@threads for i in 1:length(results)
-            results[i] = map_params_to_trajectory(input_dictionaries[i])
-            # GC.gc()
-            # CUDA.reclaim()
-            next!(progress)
-        end
-        return results
-    end
-
-    if execution_mode==:distributed
-        # Distributed
-        results = @showprogress pmap(input_dictionaries) do dict
-            map_params_to_trajectory(dict)
-        end
-        return results
-    end
-
-    if execution_mode==:serial
-        results = convert(Matrix{Any}, similar(input_dictionaries))
-        progress = Progress(length(results))
-        for i in 1:length(results)
-            results[i] = map_params_to_trajectory(input_dictionaries[i])
-            next!(progress)
-        end
-        return results
-    end
-
-    error("Execution mode is not implemented: $execution")
+function mnist_trajectory_experiment(; mode::TaskExecutionMode=SerialMode, device=:gpu, show_progress=false)
+    input_dictionaries = get_experiment_parameter_dictionaries(;device)
+    map_params_to_trajectory
+    return get_results(map_params_to_trajectory, input_dictionaries, mode; show_progress)
 end
 
 function save_results(path, results)
@@ -82,8 +48,8 @@ function save_results(path, results)
     @save path results
 end
 
-function run_mnist_problem(; execution_mode=:serial)
-    results = mnist_trajectory_experiment(;execution_mode)
+function run_and_save_mnist_problem(; kwargs...)
+    results = mnist_trajectory_experiment(; kwargs...)
     try
         git_hash = get_git_hash()
         for r in results
@@ -93,6 +59,5 @@ function run_mnist_problem(; execution_mode=:serial)
         println("Was not able to get Git hash.")
     end
 
-
-    save_results("results/large/mnist_data_1.bson", results)
+    save_results("results/large/mnist_data.bson", results)
 end
