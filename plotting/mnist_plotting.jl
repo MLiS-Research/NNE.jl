@@ -48,3 +48,11 @@ function measure_train_accuracy(info_dict; device=cpu, outputs=2)
     accuracies = [Flux.mean(reshape((x->x[1]-1).(argmax(m(features) |> cpu, dims=1)), :) .== labels) for m in models]
     return accuracies
 end
+
+function measure_test_accuracy(info_dict; device=cpu, outputs=2)
+    models = reconstruct_mnist_models(info_dict; outputs, device)
+    features, labels = get_mnist_testing_dataset(;device, outputs)
+    labels = labels |> cpu
+    accuracies = [Flux.mean(reshape((x->x[1]-1).(argmax(m(features) |> cpu, dims=1)), :) .== labels) for m in models]
+    return accuracies
+end
