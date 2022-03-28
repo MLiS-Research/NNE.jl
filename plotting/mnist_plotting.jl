@@ -1,6 +1,9 @@
 using MLDatasets
 using Plots
 using Images
+using Flux
+using Statistics
+using NNE.MNISTTraining
 include("plotting_style.jl")
 
 function get_examples(digits...)
@@ -24,4 +27,24 @@ function create_image_plots(digits...)
 
     plt = plot(plts...)
     return plt
+end
+
+function reconstruct_mnist_models(info_dict)
+    model = generate_mnist_model(;outputs=2)
+    _, re = Flux.destructure(model)
+    if info_dict[:τ] == 1
+        model = re(info_dict[:final_state]) # reconstruct model from params
+        return [model]
+    end
+
+    models = [re(state) for state in info_dict[:final_state]]
+    return models
+end
+
+function measure_train_accuracy(info_dict)
+    models = reconstruct_mnist_models(info_dict)
+    features = info_dict[:features]
+    labels = info_dict[:labels]
+    accuracies = [mean(reshape((x->x[1]-1).(argmax(m(features), dims=1)), :) .== labels) for m in models]
+    return accuracies
 end
