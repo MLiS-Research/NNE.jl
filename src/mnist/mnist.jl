@@ -136,7 +136,7 @@ function solve_mnist_trajectory(;τ=4, s=50.0, σ=0.001, epochs=10000, n_samples
     info[:solution] = solution
     info[:s] = s
     info[:σ] = σ
-    info[:τ] = 1
+    info[:τ] = τ
     info[:epochs] = epochs
     info[:n_samples] = n_samples
     info[:outputs] = outputs
