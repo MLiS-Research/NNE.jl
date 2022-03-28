@@ -54,7 +54,7 @@ function create_mnist_sa_problem(n_samples::Int = 1000; device=cpu, outputs=10, 
 
     function loss_fn(state)
         mdl = re(state)
-        return Flux.Losses.logitcrossentropy(mdl(data), labels_one_hot)/n_samples
+        return Flux.Losses.logitcrossentropy(mdl(data), labels_one_hot)
     end
 
     info = Dict(:features=>data, :labels=>labels, :labels_one_hot=>labels_one_hot, :initial_state=>θ, :model_re_fn=>re, :loss_fn=>loss_fn)
