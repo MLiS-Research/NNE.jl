@@ -28,7 +28,7 @@ Manifest.toml
 .vscode/
 
 # Large files
-results/large/
+experiments/results/large/
 
 # Cluster .out files:
 *.out

@@ -13,7 +13,7 @@ function load_tps_linear_data()
     σ = nothing
     results = nothing
     losses = nothing
-    @load "results/large/tps_linear_perceptron.bson" s_values t_values σ results losses
+    @load "experiments/results/large/tps_linear_perceptron.bson" s_values t_values σ results losses
     return s_values, t_values, σ, results, losses
 end
 
@@ -23,7 +23,7 @@ function process_tps_linear_data_and_save()
     get_last_n_losses(solution, n) = mean(solution.observations[(end-n):end])
     losses = (x->get_last_n_losses(x, 50000)).(results) ./ times_arr
 
-    @save "results/tps_linear_reduced_data.bson" s_values t_values σ losses
+    @save "experiments/results/tps_linear_reduced_data.bson" s_values t_values σ losses
     nothing
 end
 
@@ -32,7 +32,7 @@ function load_processed_tps_data()
     t_values = nothing
     σ = nothing
     losses = nothing
-    @load "results/tps_linear_reduced_data.bson" s_values t_values σ losses
+    @load "experiments/results/tps_linear_reduced_data.bson" s_values t_values σ losses
     return s_values, t_values, σ, losses
 end
 
@@ -58,6 +58,6 @@ end
 
 function plot_tps_linear_figure()
     plt = construct_tps_data_loss_vs_s_plot()
-    savefig(plt, "figures/tps_linear_perceptron.pdf")
+    savefig(plt, "experiments/figures/tps_linear_perceptron.pdf")
     return plt
 end

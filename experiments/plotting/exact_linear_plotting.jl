@@ -9,7 +9,7 @@ function load_exact_linear_data()
     sigma = nothing
     problem = nothing
     losses = nothing
-    @load "results/exact_linear_perceptron.bson" s_values t_values sigma problem losses
+    @load "experiments/results/exact_linear_perceptron.bson" s_values t_values sigma problem losses
     return s_values, t_values, sigma, problem, losses
 end
 
@@ -26,6 +26,6 @@ end
 
 function plot_exact_linear_figure()
     plt = construct_exact_linear_data_loss_vs_s_plot()
-    savefig(plt, "figures/exact_linear_perceptron.pdf")
+    savefig(plt, "experiments/figures/exact_linear_perceptron.pdf")
     return plt
 end

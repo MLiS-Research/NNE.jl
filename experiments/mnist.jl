@@ -58,5 +58,5 @@ function run_and_save_mnist_problem(; kwargs...)
         println("Was not able to get Git hash.")
     end
 
-    save_results("results/large/mnist_data.bson", results)
+    save_results("experiments/results/large/mnist_data.bson", results)
 end

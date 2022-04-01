@@ -49,5 +49,5 @@ end
 
 function run_mnist_gradient_experiment(;kwargs...)
     info = train_mnist_model(;kwargs...)
-    @save "results/mnist_gradient_experiment.bson" info
+    @save "experiments/results/mnist_gradient_experiment.bson" info
 end
