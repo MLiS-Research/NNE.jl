@@ -12,7 +12,6 @@ using NNE
 using NNE.Runner
 using TPS.Convergence
 
-
 function get_experiment_parameter_dictionaries(;device=:gpu)
     s_min = 0.01
     s_max = 5.0
