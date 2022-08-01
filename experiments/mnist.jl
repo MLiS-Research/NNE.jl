@@ -12,7 +12,7 @@ using NNE
 using NNE.Runner
 using TPS.Convergence
 
-function get_experiment_parameter_dictionaries(;device=:gpu)
+function get_experiment_parameter_dictionaries(;device=:gpu, epochs=1_000_000)
     s_min = 0.01
     s_max = 5.0
     num_s_values = 9
@@ -20,7 +20,7 @@ function get_experiment_parameter_dictionaries(;device=:gpu)
     trajectory_lengths = [1, 2, 4, 8, 16]
     options = Dict{Symbol, Any}()
     options[:fraction_to_include] = 0.25
-    options[:epochs] = 1_000_000
+    options[:epochs] = epochs
     options[:device] = device
     options[:n_samples] = 2048
     options[:outputs] = 2
@@ -35,8 +35,8 @@ function get_experiment_parameter_dictionaries(;device=:gpu)
     return input_dictionaries
 end
 
-function mnist_trajectory_experiment(; mode::TaskExecutionMode=SerialMode, device=:gpu, show_progress=false)
-    input_dictionaries = get_experiment_parameter_dictionaries(;device)
+function mnist_trajectory_experiment(; mode::TaskExecutionMode=SerialMode, device=:gpu, show_progress=false, kwargs...)
+    input_dictionaries = get_experiment_parameter_dictionaries(; device=device, kwargs...)
     map_params_to_trajectory
     return get_results(map_params_to_trajectory, input_dictionaries, mode; show_progress)
 end
