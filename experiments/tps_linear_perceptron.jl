@@ -44,5 +44,5 @@ function main(;execution_mode::TaskExecutionMode=SerialMode, show_progress=true)
     iter = collect(product(s_values, t_values, [σ]))
     results = get_results(fn, iter, execution_mode; show_progress)
     losses = get_avg_loss.(results)
-    @save "results/large/tps_linear_perceptron.bson" s_values t_values σ results losses
+    @save "experiments/results/large/tps_linear_perceptron.bson" s_values t_values σ results losses
 end
