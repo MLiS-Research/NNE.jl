@@ -15,12 +15,12 @@ using TPS.Convergence
 function get_experiment_parameter_dictionaries(;device=:gpu)
     s_min = 0.01
     s_max = 5.0
-    num_s_values = 11
+    num_s_values = 3
     s_values = get_exponentially_spaced(s_min, s_max, num_s_values)
-    trajectory_lengths = [1, 2, 4, 8, 16]
+    trajectory_lengths = [2, 8]
     options = Dict{Symbol, Any}()
     options[:fraction_to_include] = 0.25
-    options[:epochs] = 1_000_000
+    options[:epochs] = 100
     options[:device] = device
     options[:n_samples] = 2048
     options[:outputs] = 2

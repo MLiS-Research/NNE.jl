@@ -1,5 +1,5 @@
 using Distributed, CUDA
-addprocs(length(devices())-1)
+addprocs(length(devices()))
 @everywhere using Pkg
 @everywhere Pkg.activate(".")
 @everywhere using CUDA

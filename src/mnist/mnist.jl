@@ -28,12 +28,14 @@ end
 
 function generate_mnist_dataset(n_samples::Int; seed::Int=659863, device=cpu, outputs=10, kwargs...)
     rng = Random.MersenneTwister(seed) # Have a preset RNG for this function
-    labels = MNIST.trainlabels()
+    dataset = MNIST(split=:train)
+    labels = dataset.targets
     selector = labels .< outputs
     selected_indices = (collect(1:length(labels))[selector])
     samples = shuffle(rng, selected_indices)[1:n_samples]
     labels = (labels)[samples]
-    data = reshape(MNIST.traintensor(Float32)[:, :, samples], 28, 28, 1, n_samples)
+    features = dataset.features
+    data = reshape(features[:, :, samples], 28, 28, 1, n_samples)
     labels_one_hot = Flux.onehotbatch(labels, 0:(outputs-1))
     return data |> device, labels |> device, labels_one_hot |> device
 end
