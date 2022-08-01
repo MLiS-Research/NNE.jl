@@ -15,12 +15,12 @@ using TPS.Convergence
 function get_experiment_parameter_dictionaries(;device=:gpu)
     s_min = 0.01
     s_max = 5.0
-    num_s_values = 3
+    num_s_values = 9
     s_values = get_exponentially_spaced(s_min, s_max, num_s_values)
-    trajectory_lengths = [2, 8]
+    trajectory_lengths = [1, 2, 4, 8, 16]
     options = Dict{Symbol, Any}()
     options[:fraction_to_include] = 0.25
-    options[:epochs] = 100
+    options[:epochs] = 1_000_000
     options[:device] = device
     options[:n_samples] = 2048
     options[:outputs] = 2
@@ -47,6 +47,12 @@ function save_results(path, results)
     @save path results
 end
 
+function load_results(path)
+    results = nothing
+    @load path results
+    return results
+end
+
 function run_and_save_mnist_problem(; kwargs...)
     results = mnist_trajectory_experiment(; kwargs...)
     try
@@ -58,5 +64,5 @@ function run_and_save_mnist_problem(; kwargs...)
         println("Was not able to get Git hash.")
     end
 
-    save_results("experiments/results/large/mnist_data.bson", results)
+    save_results("results/large/mnist_data.bson", results)
 end
