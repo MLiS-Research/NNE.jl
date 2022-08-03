@@ -9,4 +9,7 @@ include("linear_perceptron/tps_calculation.jl")
 include("classification/toy_problem.jl")
 
 
+include("mnist/mnist.jl") # MNIST module
+include("toy_example/toy.jl")
+
 end
