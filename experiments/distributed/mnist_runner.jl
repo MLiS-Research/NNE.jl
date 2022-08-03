@@ -49,5 +49,6 @@ function map_params_to_trajectory(kwargs...)
 
     dict[:start_time] = start_time
     dict[:end_time] = now()
+    dict[:duration] = dict[:end_time] - dict[:start_time]
     return dict
 end
