@@ -21,7 +21,8 @@ end
 function get_results_threaded(fn, iter; show_progress=false)
     results = Array{Any}(undef, size(iter)...)
     progress_bar = show_progress ? Progress(length(iter)) : nothing
-    Threads.@threads for (i, x) in iter
+    enumerated_iter = collect(enumerate(iter))
+    Threads.@threads for (i, x) in enumerated_iter
         results[i] = fn(x...)
         show_progress && next!(progress_bar)
     end
