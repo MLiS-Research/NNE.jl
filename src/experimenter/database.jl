@@ -103,14 +103,14 @@ end
 
 function get_experiment(db::ExperimentDatabase, experiment_id)
     experiment_id = SQLite.esc_id(string(experiment_id))
-    vs = (SQLite.DBInterface.execute(db._db, "SELECT * FROM Experiments WHERE id = $experiment_id") |> DataFrame)
-    return Experiment(first(eachrow(vs)))
+    df = (SQLite.DBInterface.execute(db._db, "SELECT * FROM Experiments WHERE id = $experiment_id") |> DataFrame)
+    return Experiment(first(eachrow(df)))
 end
 
 function get_experiment_by_name(db::ExperimentDatabase, name)
     name = SQLite.esc_id(string(name))
-    vs = (SQLite.DBInterface.execute(db._db, "SELECT * FROM Experiments WHERE name = $name") |> DataFrame)
-    return Experiment(first(eachrow(vs)))
+    df = (SQLite.DBInterface.execute(db._db, "SELECT * FROM Experiments WHERE name = $name") |> DataFrame)
+    return Experiment(first(eachrow(df)))
 end
 
 function get_experiments(db::ExperimentDatabase)
@@ -120,13 +120,25 @@ end
 
 function get_trial(db::ExperimentDatabase, trial_index)
     trial_index = SQLite.esc_id(string(trial_index))
-    vs = (SQLite.DBInterface.execute(db._db, "SELECT * FROM Trials WHERE id = $trial_index") |> DataFrame)
-    return Trial(first(eachrow(vs)))
+    df = (SQLite.DBInterface.execute(db._db, "SELECT * FROM Trials WHERE id = $trial_index") |> DataFrame)
+    return Trial(first(eachrow(df)))
 end
 
 function get_trials(db::ExperimentDatabase, experiment_id)
     experiment_id = SQLite.esc_id(string(experiment_id))
     df = SQLite.DBInterface.execute(db._db, "SELECT * FROM Trials WHERE experiment_id = $experiment_id ORDER BY trial_index ASC") |> DataFrame
+    return [Trial(row) for row in eachrow(df)]
+end
+
+function get_trials_by_name(db::ExperimentDatabase, name)
+    sql = raw"""
+    SELECT name, Trials.id as id, experiment_id, Trials.configuration as configuration, results, trial_index, has_finished 
+    FROM Trials 
+    INNER JOIN Experiments ON Experiments.id == Trials.experiment_id 
+    WHERE name = ? 
+    ORDER BY trial_index
+    """
+    df = (SQLite.DBInterface.execute(db._db, sql, (name,)) |> DataFrame)
     return [Trial(row) for row in eachrow(df)]
 end
 

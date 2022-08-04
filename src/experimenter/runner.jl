@@ -1,6 +1,5 @@
 using Base
 using Distributed
-using ParallelDataTransfer
 using Base.Iterators
 using Logging
 
@@ -38,7 +37,6 @@ function prepare_environment(runner::Runner)
     if runner.execution_mode == DistributedMode
         eval(Meta.parse("@everywhere using Pkg"))
         eval(Meta.parse("@everywhere Pkg.activate(\".\")"))
-        eval(Meta.parse("@everywhere using ParallelDataTransfer"))
         eval(Meta.parse("@everywhere using NNE.Experimenter"))
     end
 
@@ -46,10 +44,9 @@ function prepare_environment(runner::Runner)
 
     if !ismissing(include_file)
         if runner.execution_mode == DistributedMode
-            sendto(workers(), include_file=include_file)
-            eval(Meta.parse("@everywhere include(include_file)"))
+            eval(Meta.parse("@everywhere include(\"$include_file\");"))
         end
-        eval(Meta.parse("include(include_file)"))
+        eval(Meta.parse("include(\"$include_file\")";))
     end
     nothing
 end
