@@ -85,7 +85,7 @@ struct IterableVariable{Q,T<:AbstractArray{Q}} <: AbstractVariable
     iterator::T
 end
 count_values(v::IterableVariable) = length(v.iterator)
-Base.eltype(::LogLinearVariable{Q,T}) where {Q,T} = Q
+Base.eltype(::IterableVariable{Q,T}) where {Q,T} = Q
 Base.iterate(v::IterableVariable) = iterate(v.iterator)
 Base.iterate(v::IterableVariable, state) = iterate(v.iterator, state)
 extract_value(v::IterableVariable, i) = getindex(v.iterator, i)
@@ -94,7 +94,7 @@ Base.@kwdef struct Experiment
     id::UUID = uuid4()
     name::AbstractString
     include_file::Union{Missing,AbstractString} = missing
-    code::AbstractString
+    function_name::AbstractString
     configuration::Dict{Symbol,Any}
     num_trials::Int = mapreduce(count_values, *, values(configuration))
 end
@@ -148,7 +148,8 @@ function Base.iterate(experiment::Experiment)
     end
 
     param_map_tuple, iter_state = iterate(iter)
-    param_map = merge(param_map_tuple...)
+    # Include empty dict to remove type from parameters
+    param_map = merge(Dict{Symbol,Any}(), param_map_tuple...)
 
     trial = _construct_trial(uuid4(rng), experiment, param_map, 1)
 
@@ -165,7 +166,7 @@ function Base.iterate(experiment::Experiment, state)
     end
 
     param_map_tuple, iter_state = coll_iter
-    param_map = merge(param_map_tuple...)
+    param_map = merge(Dict{Symbol,Any}(), param_map_tuple...)
 
     trial = _construct_trial(uuid4(rng), experiment, param_map, i)
 

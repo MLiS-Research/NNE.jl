@@ -14,18 +14,18 @@ end
 
 function get_experiment_insert_stmt(db::SQLite.DB)
     sql = raw"""
-    INSERT INTO Experiments (id, name, include_file, code, configuration, num_trials) VALUES (?, ?, ?, ?, ?, ?);
+    INSERT OR IGNORE INTO Experiments (id, name, include_file, function_name, configuration, num_trials) VALUES (?, ?, ?, ?, ?, ?)
     """
     return SQLite.Stmt(db, sql)
 end
 function get_trial_insert_stmt(db::SQLite.DB)
     sql = raw"""
-    INSERT INTO Trials (id, experiment_id, configuration, results, trial_index, has_finished) VALUES (?, ?, ?, ?, ?, ?);
+    INSERT OR IGNORE INTO Trials (id, experiment_id, configuration, results, trial_index, has_finished) VALUES (?, ?, ?, ?, ?, ?)
     """
     return SQLite.Stmt(db, sql)
 end
 function Base.push!(db::ExperimentDatabase, experiment::Experiment)
-    vs = (string(experiment.id), experiment.name, experiment.include_file, experiment.code, experiment.configuration, experiment.num_trials)
+    vs = (string(experiment.id), experiment.name, experiment.include_file, experiment.function_name, experiment.configuration, experiment.num_trials)
     SQLite.execute(db._experimentInsertStmt, vs)
     nothing
 end
@@ -36,7 +36,7 @@ function Base.push!(db::ExperimentDatabase, trial::Trial)
 end
 
 
-Experiment(row::DataFrameRow) = Experiment(UUID(row.id), row.name, row.include_file, row.code, row.configuration, row.num_trials)
+Experiment(row::DataFrameRow) = Experiment(UUID(row.id), row.name, row.include_file, row.function_name, row.configuration, row.num_trials)
 Trial(row::DataFrameRow) = Trial(
     id=UUID(row.id),
     experiment_id=UUID(row.experiment_id),
@@ -53,7 +53,7 @@ function prepare_db(db::SQLite.DB)
         id TEXT NOT NULL PRIMARY KEY,
         name TEXT NOT NULL UNIQUE,
         include_file TEXT,
-        code TEXT,
+        function_name TEXT,
         configuration BLOB,
         num_trials INTEGER NOT NULL
     );
@@ -128,4 +128,11 @@ function get_trials(db::ExperimentDatabase, experiment_id)
     experiment_id = SQLite.esc_id(string(experiment_id))
     df = SQLite.DBInterface.execute(db._db, "SELECT * FROM Trials WHERE experiment_id = $experiment_id") |> DataFrame
     return [Trial(row) for row in eachrow(df)]
+end
+
+function complete_trial!(db::ExperimentDatabase, trial_id::UUID, results::Dict{Symbol,Any})
+    stmt = SQLite.Stmt(db._db, "UPDATE Trials SET results = @results, has_finished = @finished WHERE id = @id")
+    vs = Dict{Symbol,Any}(:results => results, :finished => true, :id => string(trial_id))
+    DBInterface.execute(stmt, vs)
+    nothing
 end

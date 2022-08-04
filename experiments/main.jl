@@ -4,28 +4,22 @@ using NNE.Experimenter
 
 
 config = Dict{Symbol,Any}(
-    :epochs => IterableVariable([100, 200, 300]),
-    :s => LinearVariable(1.0, 10.0, 5),
-    :sigma => LogLinearVariable(0.1, 100.0, 12),
-    :problem => "mnist"
+    :epochs => IterableVariable([100, 200]),
+    :sigma => LogLinearVariable(0.1, 100.0, 3),
+    :seed => IterableVariable([1234, 4321])
 );
 
 experiment = Experiment(
-    include_file="mnist.jl",
-    code="run()",
-    name="Test Experiment",
+    include_file="setup.jl",
+    function_name="generate_random_walk",
+    name="Experiment 1",
     configuration=config
 );
 
 db = open_db("experiments.db")
 
-push!(db, experiment)
+runner = Runner(execution_mode=SerialMode, experiment=experiment, database=db)
 
-for trial in experiment
-    push!(db, trial)
+execute(runner)
 
-    println("Done trial $(string(trial.id))")
-end
-
-trials = get_trials(db, experiment.id)
-
+results = (x -> x.results).(get_trials(db, experiment.id))
