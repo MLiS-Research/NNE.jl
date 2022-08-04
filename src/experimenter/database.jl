@@ -14,26 +14,48 @@ end
 
 function get_experiment_insert_stmt(db::SQLite.DB)
     sql = raw"""
-    INSERT INTO Experiments (id, include_file, code, configuration) VALUES (?, ?, ?, ?);
+    INSERT INTO Experiments (id, name, include_file, code, configuration, num_trials) VALUES (?, ?, ?, ?, ?, ?);
     """
     return SQLite.Stmt(db, sql)
 end
 function get_trial_insert_stmt(db::SQLite.DB)
     sql = raw"""
-    INSERT INTO Trials (id, experiment_id, configuration) VALUES (?, ?, ?);
+    INSERT INTO Trials (id, experiment_id, configuration, results, trial_index, has_finished) VALUES (?, ?, ?, ?, ?, ?);
     """
     return SQLite.Stmt(db, sql)
 end
+function Base.push!(db::ExperimentDatabase, experiment::Experiment)
+    vs = (string(experiment.id), experiment.name, experiment.include_file, experiment.code, experiment.configuration, experiment.num_trials)
+    SQLite.execute(db._experimentInsertStmt, vs)
+    nothing
+end
+function Base.push!(db::ExperimentDatabase, trial::Trial)
+    vs = (string(trial.id), string(trial.experiment_id), trial.configuration, trial.results, trial.trial_index, trial.has_finished)
+    SQLite.execute(db._trialInsertStmt, vs)
+    nothing
+end
 
+
+Experiment(row::DataFrameRow) = Experiment(UUID(row.id), row.name, row.include_file, row.code, row.configuration, row.num_trials)
+Trial(row::DataFrameRow) = Trial(
+    id=UUID(row.id),
+    experiment_id=UUID(row.experiment_id),
+    configuration=row.configuration,
+    results=row.results,
+    trial_index=row.trial_index,
+    has_finished=row.has_finished
+)
 
 function prepare_db(db::SQLite.DB)
     # Create a table for the experiments
     experiments_query = raw"""
     CREATE TABLE IF NOT EXISTS Experiments (
         id TEXT NOT NULL PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
         include_file TEXT,
         code TEXT,
-        configuration BLOB
+        configuration BLOB,
+        num_trials INTEGER NOT NULL
     );
     """
 
@@ -42,6 +64,9 @@ function prepare_db(db::SQLite.DB)
         id TEXT NOT NULL PRIMARY KEY,
         experiment_id TEXT NOT NULL,
         configuration BLOB,
+        results BLOB,
+        trial_index INTEGER NOT NULL,
+        has_finished BOOLEAN NOT NULL, 
         FOREIGN KEY (experiment_id) REFERENCES Experiments (id)
             ON DELETE CASCADE ON UPDATE CASCADE
     );
@@ -75,24 +100,16 @@ function open_db(database_name, experiment_folder=joinpath(pwd(), "experiments")
     return db
 end
 
-function Base.push!(db::ExperimentDatabase, experiment::Experiment)
-    vs = (string(experiment.id), experiment.include_file, experiment.code, experiment.configuration)
-    SQLite.execute(db._experimentInsertStmt, vs)
-    nothing
-end
-
-function Base.push!(db::ExperimentDatabase, trial::Trial)
-    vs = (string(trial.id), string(trial.experiment_id), trial.configuration)
-    SQLite.execute(db._trialInsertStmt, vs)
-    nothing
-end
-
-Experiment(row::DataFrameRow) = Experiment(UUID(row.id), row.include_file, row.code, row.configuration)
-Trial(row::DataFrameRow) = Trial(UUID(row.id), UUID(row.experiment_id), row.configuration)
 
 function get_experiment(db::ExperimentDatabase, experiment_id)
     experiment_id = SQLite.esc_id(string(experiment_id))
     vs = (SQLite.DBInterface.execute(db._db, "SELECT * FROM Experiments WHERE id = $experiment_id") |> DataFrame)
+    return Experiment(first(eachrow(vs)))
+end
+
+function get_experiment_by_name(db::ExperimentDatabase, name)
+    name = SQLite.esc_id(string(name))
+    vs = (SQLite.DBInterface.execute(db._db, "SELECT * FROM Experiments WHERE name = $name") |> DataFrame)
     return Experiment(first(eachrow(vs)))
 end
 
@@ -101,9 +118,9 @@ function get_experiments(db::ExperimentDatabase)
     return [Experiment(row) for row in eachrow(df)]
 end
 
-function get_trial(db::ExperimentDatabase, trial_id)
-    trial_id = SQLite.esc_id(string(trial_id))
-    vs = (SQLite.DBInterface.execute(db._db, "SELECT * FROM Trials WHERE id = $trial_id") |> DataFrame)
+function get_trial(db::ExperimentDatabase, trial_index)
+    trial_index = SQLite.esc_id(string(trial_index))
+    vs = (SQLite.DBInterface.execute(db._db, "SELECT * FROM Trials WHERE id = $trial_index") |> DataFrame)
     return Trial(first(eachrow(vs)))
 end
 

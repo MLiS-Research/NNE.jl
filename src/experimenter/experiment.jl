@@ -92,22 +92,27 @@ extract_value(v::IterableVariable, i) = getindex(v.iterator, i)
 
 Base.@kwdef struct Experiment
     id::UUID = uuid4()
-    include_file::AbstractString
+    name::AbstractString
+    include_file::Union{Missing,AbstractString} = missing
     code::AbstractString
     configuration::Dict{Symbol,Any}
+    num_trials::Int = mapreduce(count_values, *, values(configuration))
 end
 
 Base.@kwdef struct Trial
     id::UUID = uuid4()
     experiment_id::UUID
     configuration::Dict{Symbol,Any}
+    results::Union{Missing,Dict{Symbol,Any}} = missing
+    trial_index::Int
+    has_finished::Bool = false
 end
 
 function count_trails(experiment::Experiment)
     return mapreduce(count_values, *, values(experiment.configuration))
 end
 
-function _construct_trial(id::UUID, experiment::Experiment, param_map)
+function _construct_trial(id::UUID, experiment::Experiment, param_map, trial_index)
     config_dict = Dict{Symbol,Any}()
 
     for (key, value) in experiment.configuration
@@ -118,7 +123,7 @@ function _construct_trial(id::UUID, experiment::Experiment, param_map)
         end
     end
 
-    return Trial(id=id, configuration=config_dict, experiment_id=experiment.id)
+    return Trial(id=id, configuration=config_dict, experiment_id=experiment.id, trial_index=trial_index)
 end
 
 function combinatorial_iterator(config)
@@ -145,15 +150,15 @@ function Base.iterate(experiment::Experiment)
     param_map_tuple, iter_state = iterate(iter)
     param_map = merge(param_map_tuple...)
 
-    trial = _construct_trial(uuid4(rng), experiment, param_map)
+    trial = _construct_trial(uuid4(rng), experiment, param_map, 1)
 
-    next_state = (iter, iter_state, rng)
+    next_state = (iter, iter_state, rng, 2)
 
     return trial, next_state
 end
 
 function Base.iterate(experiment::Experiment, state)
-    (iter, last_state, rng) = state
+    (iter, last_state, rng, i) = state
     coll_iter = iterate(iter, last_state)
     if isnothing(coll_iter)
         return nothing
@@ -162,9 +167,9 @@ function Base.iterate(experiment::Experiment, state)
     param_map_tuple, iter_state = coll_iter
     param_map = merge(param_map_tuple...)
 
-    trial = _construct_trial(uuid4(rng), experiment, param_map)
+    trial = _construct_trial(uuid4(rng), experiment, param_map, i)
 
-    next_state = (iter, iter_state, rng)
+    next_state = (iter, iter_state, rng, i + 1)
     return trial, next_state
 end
 

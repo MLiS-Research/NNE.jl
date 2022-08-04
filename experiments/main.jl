@@ -13,6 +13,7 @@ config = Dict{Symbol,Any}(
 experiment = Experiment(
     include_file="mnist.jl",
     code="run()",
+    name="Test Experiment",
     configuration=config
 );
 
@@ -26,8 +27,5 @@ for trial in experiment
     println("Done trial $(string(trial.id))")
 end
 
-trials = get_trials(db, "d3ba4c4c-471d-46b3-906c-564a2f4910f7")
+trials = get_trials(db, experiment.id)
 
-trials_list = collect(experiment)
-
-experiment = get_experiment(db, "d3ba4c4c-471d-46b3-906c-564a2f4910f7")
