@@ -118,7 +118,7 @@ function _construct_trial(experiment::Experiment, param_map)
         end
     end
 
-    return config_dict
+    return Trial(configuration=config_dict, experiment_id=experiment.id)
 end
 
 function combinatorial_iterator(config)
@@ -147,7 +147,12 @@ end
 
 function Base.iterate(experiment::Experiment, state)
     (iter, last_state) = state
-    param_map_tuple, iter_state = iterate(iter, last_state)
+    coll_iter = iterate(iter, last_state)
+    if isnothing(coll_iter)
+        return nothing
+    end
+
+    param_map_tuple, iter_state = coll_iter
     param_map = merge(param_map_tuple...)
 
     trial = _construct_trial(experiment, param_map)
