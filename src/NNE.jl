@@ -12,4 +12,6 @@ include("classification/toy_problem.jl")
 include("mnist/mnist.jl") # MNIST module
 include("toy_example/toy.jl")
 
+include("experimenter/experimenter.jl") # Experimentation module
+
 end

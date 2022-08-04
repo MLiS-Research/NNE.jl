@@ -1,4 +1,5 @@
 using Base
+using Base.Iterators
 using UUIDs
 
 abstract type AbstractVariable end
@@ -8,7 +9,7 @@ abstract type AbstractVariable end
 Counts the number of different values which 'variable' can take.
 """
 count_values(variable) = 1
-count_values(variable <: AbstractVariable) = error("count_values is not defined for $(typeof(variable)).")
+count_values(variable::AbstractVariable) = error("count_values is not defined for $(typeof(variable)).")
 
 """
     extract_value(variable, i)
@@ -17,18 +18,24 @@ Returns the i^th possible value of 'variable'.
 'i' follows 1 based indexing.
 """
 extract_value(variable, i) = v
-extract_value(variable <: AbstractVariable, i) = error("extract_value is not defined for $(typeof(variable)).")
+extract_value(variable::AbstractVariable, i) = error("extract_value is not defined for $(typeof(variable)).")
 
 
-function checkbounds(v <: AbstractVariable, i)
+function checkbounds(v::AbstractVariable, i)
     (i < 1 || i > count_values(v)) && error("Cannot access $(typeof(v)) with $(count_values(v)) elements at index $i").
     nothing
 end
 
 # AbstractVariables should implement the iteration interfaces.
-Base.iterate(v <: AbstractVariable) = (extract_value(v, 1), 1)
-Base.iterate(v <: AbstractVariable, i) = extract_value(v, i)
-Base.iterate(v <: AbstractVariable) = count_values(v)
+Base.iterate(v::AbstractVariable) = (extract_value(v, 1), 2)
+function Base.iterate(v::AbstractVariable, i)
+    if i <= length(v)
+        return (extract_value(v, i), i + 1)
+    else
+        return nothing
+    end
+end
+Base.length(v::AbstractVariable) = count_values(v)
 
 struct LinearVariable{T,Q<:Integer} <: AbstractVariable
     min_value::T
@@ -38,7 +45,7 @@ end
 count_values(v::LinearVariable) = v.num_values
 function extract_value(v::LinearVariable, i)
     checkbounds(v, i)
-    val = v.min_value + (v.max_value - v.min_value) * (i - 1) / v.num_values
+    val = v.min_value + (v.max_value - v.min_value) * (i - 1) / (v.num_values - 1)
     return val
 end
 Base.eltype(::LinearVariable{T}) where {T} = promote(T, Float64)
@@ -70,8 +77,7 @@ function extract_value(v::LogLinearVariable{T}, i) where {T}
     end
     log_min_value = log10(v.min_value)
     log_max_value = log10(v.max_value)
-    out_val_type = promote(Float64, T)
-    return convert(out_val_type, 10.0 .^ (log_min_value + (log_max_value - log_min_value) * (i - 1) / (n - 1)))
+    return convert(Float64, 10.0 .^ (log_min_value + (log_max_value - log_min_value) * (i - 1) / (v.num_values - 1)))
 end
 Base.eltype(::LogLinearVariable{T}) where {T} = promote(Float64, T)
 
@@ -80,6 +86,9 @@ struct IterableVariable{Q,T<:AbstractArray{Q}} <: AbstractVariable
 end
 count_values(v::IterableVariable) = length(v.iterator)
 Base.eltype(::LogLinearVariable{Q,T}) where {Q,T} = Q
+Base.iterate(v::IterableVariable) = iterate(v.iterator)
+Base.iterate(v::IterableVariable, state) = iterate(v.iterator, state)
+extract_value(v::IterableVariable, i) = getindex(v.iterator, i)
 
 Base.@kwdef struct Experiment
     id::UUID = uuid4()
@@ -95,7 +104,7 @@ Base.@kwdef struct Trial
 end
 
 function count_trails(experiment::Experiment)
-    return sum(count_values, values(experiment.configuration))
+    return mapreduce(count_values, *, values(experiment.configuration))
 end
 
 function _construct_trial(experiment::Experiment, param_map)
@@ -113,7 +122,7 @@ function _construct_trial(experiment::Experiment, param_map)
 end
 
 function combinatorial_iterator(config)
-    return product((Iterators.map((v_i) -> Dict(sym => v_i), v) for (sym, v) in config if v <: AbstractVariable)...)
+    return product((Iterators.map((v_i) -> Dict(sym => v_i), v) for (sym, v) in config if typeof(v) <: AbstractVariable)...)
 end
 
 function Base.iterate(experiment::Experiment)
@@ -124,6 +133,7 @@ function Base.iterate(experiment::Experiment)
 
     if (length(iter) == 0)
         return nothing
+    end
 
     param_map_tuple, iter_state = iterate(iter)
     param_map = merge(param_map_tuple...)
@@ -139,14 +149,12 @@ function Base.iterate(experiment::Experiment, state)
     (iter, last_state) = state
     param_map_tuple, iter_state = iterate(iter, last_state)
     param_map = merge(param_map_tuple...)
-    
+
     trial = _construct_trial(experiment, param_map)
-    
+
     next_state = (iter, iter_state)
     return trial, next_state
 end
 
 Base.length(experiment::Experiment) = count_trails(experiment)
 Base.eltype(::Experiment) = Trial
-
-export Experiment, Trial

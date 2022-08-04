@@ -22,6 +22,3 @@ function create_db(database_name, experiment_folder=joinpath(pwd(), "experiments
     db = ExperimentDatabase(experiment_folder, database_name, _sqliteDB)
     return db
 end
-
-
-export create_db
