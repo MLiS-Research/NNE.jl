@@ -126,7 +126,7 @@ end
 
 function get_trials(db::ExperimentDatabase, experiment_id)
     experiment_id = SQLite.esc_id(string(experiment_id))
-    df = SQLite.DBInterface.execute(db._db, "SELECT * FROM Trials WHERE experiment_id = $experiment_id") |> DataFrame
+    df = SQLite.DBInterface.execute(db._db, "SELECT * FROM Trials WHERE experiment_id = $experiment_id ORDER BY trial_index ASC") |> DataFrame
     return [Trial(row) for row in eachrow(df)]
 end
 
