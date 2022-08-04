@@ -107,7 +107,7 @@ function count_trails(experiment::Experiment)
     return mapreduce(count_values, *, values(experiment.configuration))
 end
 
-function _construct_trial(experiment::Experiment, param_map)
+function _construct_trial(id::UUID, experiment::Experiment, param_map)
     config_dict = Dict{Symbol,Any}()
 
     for (key, value) in experiment.configuration
@@ -118,11 +118,16 @@ function _construct_trial(experiment::Experiment, param_map)
         end
     end
 
-    return Trial(configuration=config_dict, experiment_id=experiment.id)
+    return Trial(id=id, configuration=config_dict, experiment_id=experiment.id)
 end
 
 function combinatorial_iterator(config)
     return product((Iterators.map((v_i) -> Dict(sym => v_i), v) for (sym, v) in config if typeof(v) <: AbstractVariable)...)
+end
+
+function getrng(id::UUID)
+    seed = id.value
+    return UUIDs.Random.MersenneTwister(seed)
 end
 
 function Base.iterate(experiment::Experiment)
@@ -131,6 +136,8 @@ function Base.iterate(experiment::Experiment)
     config = experiment.configuration
     iter = combinatorial_iterator(config)
 
+    rng = getrng(experiment.id)
+
     if (length(iter) == 0)
         return nothing
     end
@@ -138,15 +145,15 @@ function Base.iterate(experiment::Experiment)
     param_map_tuple, iter_state = iterate(iter)
     param_map = merge(param_map_tuple...)
 
-    trial = _construct_trial(experiment, param_map)
+    trial = _construct_trial(uuid4(rng), experiment, param_map)
 
-    next_state = (iter, iter_state)
+    next_state = (iter, iter_state, rng)
 
     return trial, next_state
 end
 
 function Base.iterate(experiment::Experiment, state)
-    (iter, last_state) = state
+    (iter, last_state, rng) = state
     coll_iter = iterate(iter, last_state)
     if isnothing(coll_iter)
         return nothing
@@ -155,9 +162,9 @@ function Base.iterate(experiment::Experiment, state)
     param_map_tuple, iter_state = coll_iter
     param_map = merge(param_map_tuple...)
 
-    trial = _construct_trial(experiment, param_map)
+    trial = _construct_trial(uuid4(rng), experiment, param_map)
 
-    next_state = (iter, iter_state)
+    next_state = (iter, iter_state, rng)
     return trial, next_state
 end
 
