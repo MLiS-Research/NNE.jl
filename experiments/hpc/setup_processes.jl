@@ -9,24 +9,24 @@ function parse_commandline()
     arg_settings = ArgParseSettings()
     @add_arg_table arg_settings begin
         "--include_file"
-            help = "The path to the file which should be included on each worker."
-            arg_type = String
-            default = nothing
+        help = "The path to the file which should be included on each worker."
+        arg_type = String
+        default = nothing
         "--working_dir"
-            help = "Path to the current working directory."
-            arg_type = String
-            default = nothing
+        help = "Path to the current working directory."
+        arg_type = String
+        default = nothing
         "--skip_activate_env"
-            help = "Whether to skip activating the current environment on each worker."
-            action = :store_true
+        help = "Whether to skip activating the current environment on each worker."
+        action = :store_true
         "--run_file"
-            help = "An optional path to a file to run. This runs before the eval code."
-            arg_type = String
-            default = nothing
+        help = "An optional path to a file to run. This runs before the eval code."
+        arg_type = String
+        default = nothing
         "--eval_code", "-e"
-            help = "Optional code to run."
-            arg_type = String
-            default = ""
+        help = "Optional code to run."
+        arg_type = String
+        default = ""
     end
 
     parsed_args = parse_args(ARGS, arg_settings)
@@ -67,8 +67,8 @@ end
 
 if !skip_activate
     println("Activating environments at $(pwd())")
-    @everywhere using Pkg;
-    @everywhere Pkg.activate(".");
+    @everywhere using Pkg
+    @everywhere Pkg.activate(".")
 end
 
 if !isnothing(include_file)

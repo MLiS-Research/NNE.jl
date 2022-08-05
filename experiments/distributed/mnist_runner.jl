@@ -1,10 +1,8 @@
-using Pkg
-Pkg.activate(".")
 using NNE.MNISTTraining
 using TPS
-using ProgressMeter
 using Flux
 using Dates
+using Random
 
 function clean_info_dict(dict)
     dict[:initial_state] = TPS.get_initial_state(dict[:solution].problem)
@@ -14,7 +12,7 @@ function clean_info_dict(dict)
     for k in keys_to_remove
         haskey(dict, k) && delete!(dict, k)
     end
-    
+
     all_keys = deepcopy(keys(dict))
     for key in all_keys
         if occursin("_fn", String(key))
@@ -23,32 +21,41 @@ function clean_info_dict(dict)
             dict[key] = dict[key] |> cpu
         end
     end
-    
+
     return dict
 end
 
-function map_params_to_trajectory(kwargs...)
+function map_params_to_trajectory(kwargs)
     start_time = now()
-    if !(typeof(kwargs) <: AbstractDict)
+    if !(typeof(kwargs) <: Dict)
         kwargs = Dict(kwargs)
     end
+
     if haskey(kwargs, :device) && typeof(kwargs[:device]) <: Symbol
-        kwargs[:device] = kwargs[:device]==:gpu ? gpu : cpu
+        kwargs[:device] = kwargs[:device] == :gpu ? gpu : cpu
     end
 
     dict = nothing
+    if haskey(kwargs, :seed)
+        Random.seed!(kwargs[:seed])
+    end
     if haskey(kwargs, :τ) && kwargs[:τ] == 1
         delete!(kwargs, :τ)
         if haskey(kwargs, :max_epochs)
             kwargs[:epochs] = kwargs[:max_epochs]
         end
-        dict = clean_info_dict(solve_mnist_sa(;kwargs...))
+        dict = clean_info_dict(solve_mnist_sa(; kwargs...))
     else
-        dict = clean_info_dict(solve_mnist_trajectory(;kwargs...))
+        dict = clean_info_dict(solve_mnist_trajectory(; kwargs...))
     end
 
     dict[:start_time] = start_time
     dict[:end_time] = now()
     dict[:duration] = dict[:end_time] - dict[:start_time]
+    dict[:git_hash] = get_git_hash()
     return dict
+end
+
+function get_git_hash()
+    return strip(read(`git rev-parse HEAD`, String))
 end
