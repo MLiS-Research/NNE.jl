@@ -1,8 +1,8 @@
 using NNE.MNISTTraining
 using TPS
-using ProgressMeter
 using Flux
 using Dates
+using Random
 
 function clean_info_dict(dict)
     dict[:initial_state] = TPS.get_initial_state(dict[:solution].problem)
@@ -36,6 +36,9 @@ function map_params_to_trajectory(; kwargs...)
     end
 
     dict = nothing
+    if haskey(kwargs, :seed)
+        Random.seed!(kwargs[:seed])
+    end
     if haskey(kwargs, :τ) && kwargs[:τ] == 1
         delete!(kwargs, :τ)
         if haskey(kwargs, :max_epochs)

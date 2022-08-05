@@ -19,10 +19,8 @@ experiment = Experiment(
     configuration=config
 )
 
-db = open_db("experiments.db", joinpath(pwd(), "experiments", "results"))
+db = open_db("experiments.db", joinpath(pwd(), "experiments", "results", "large"))
 
 runner = Runner(execution_mode=SerialMode, experiment=experiment, database=db)
 
 execute(runner)
-
-# trials = get_trials_by_name(db, "MNIST Experiment 1")
