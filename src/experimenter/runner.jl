@@ -13,6 +13,7 @@ end
 
 macro execute(experiment, database, mode=SerialMode)
     quote
+        $(esc(experiment)) = restore_from_db($(esc(database)), $(esc(experiment)))
         let runner = Runner(experiment=$(esc(experiment)), database=$(esc(database)), execution_mode=$(esc(mode)))
             push!(runner.database, runner.experiment)
             existing_trials = get_trials(runner.database, runner.experiment.id)
@@ -75,6 +76,11 @@ function complete_trial_in_global_database(trial_id::UUID, results::Dict{Symbol,
 end
 
 function run_trials(runner::Runner, trials::AbstractArray{Trial})
+    if length(trials) == 0
+        @info "No incomplete trials found. Finished."
+        return nothing
+    end
+
     if runner == DistributedMode
         @info "Running $(length(trials)) trials across $(length(workers())) workers"
         set_global_database(db)
@@ -95,5 +101,6 @@ function run_trials(runner::Runner, trials::AbstractArray{Trial})
         end
     end
     @info "Finished all trials."
+    nothing
 end
 
