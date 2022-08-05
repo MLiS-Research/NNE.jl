@@ -10,4 +10,5 @@ export get_experiment, get_experiments, get_trial, get_trials, get_experiment_by
 export execute_trial, execute_trial_and_save_to_db_async
 export execute, Runner
 export SerialMode, MultithreadedMode, DistributedMode
+export restore_from_db
 end

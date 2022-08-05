@@ -18,6 +18,8 @@ config = Dict{Symbol,Any}(
     :repeat_number => IterableVariable(1:num_repeats),
 )
 
+db = open_db("experiments.db", joinpath(pwd(), "results", "large"))
+
 experiment = Experiment(
     name="MNIST Experiment 1",
     include_file="../distributed/mnist_runner.jl",
@@ -25,6 +27,5 @@ experiment = Experiment(
     configuration=config
 )
 
-db = open_db("experiments.db", joinpath(pwd(), "results", "large"))
 
 @execute experiment db DistributedMode

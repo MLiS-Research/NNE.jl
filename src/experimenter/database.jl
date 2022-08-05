@@ -113,6 +113,42 @@ function get_experiment_by_name(db::ExperimentDatabase, name)
     return Experiment(first(eachrow(df)))
 end
 
+
+function check_overlap(experimentA::Experiment, experimentB::Experiment)
+    if experimentA.name != experimentB.name
+        return false
+    elseif experimentA.function_name != experimentB.function_name
+        return false
+    elseif experimentA.num_trials != experimentB.num_trials
+        return false
+    else
+        trials_a = collect(experimentA)
+        trials_b = collect(experimentB)
+
+        for (a, b) in zip(trials_a, trials_b)
+            if a.configuration != b.configuration
+                return false
+            end
+        end
+    end
+
+    return true
+end
+
+function restore_from_db(db::ExperimentDatabase, experiment::Experiment)
+    name = SQLite.esc_id(string(experiment.name))
+    df = (SQLite.DBInterface.execute(db._db, "SELECT * FROM Experiments WHERE name = $name") |> DataFrame)
+    if length(eachrow(df)) > 0
+        existing_experiment = Experiment(first(eachrow(df)))
+        if (!check_overlap(experiment, existing_experiment))
+            error("Found existing experiment with name $(experiment.name), but with different configuration. Use a different name.")
+        end
+        return existing_experiment
+    end
+
+    return experiment
+end
+
 function get_experiments(db::ExperimentDatabase)
     df = SQLite.DBInterface.execute(db._db, "SELECT * FROM Experiments") |> DataFrame
     return [Experiment(row) for row in eachrow(df)]
