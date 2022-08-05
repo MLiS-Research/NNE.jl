@@ -25,7 +25,7 @@ function clean_info_dict(dict)
     return dict
 end
 
-function map_params_to_trajectory(; kwargs...)
+function map_params_to_trajectory(kwargs)
     start_time = now()
     if !(typeof(kwargs) <: Dict)
         kwargs = Dict(kwargs)

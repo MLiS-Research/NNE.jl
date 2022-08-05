@@ -11,49 +11,49 @@ Base.@kwdef struct Runner
     database::ExperimentDatabase
 end
 
-function execute(runner::Runner)
-    # Push to the database
-    push!(runner.database, runner.experiment)
+macro execute(experiment, database, mode=SerialMode)
+    quote
+        let runner = Runner(experiment=$(esc(experiment)), database=$(esc(database)), execution_mode=$(esc(mode)))
+            push!(runner.database, runner.experiment)
+            existing_trials = get_trials(runner.database, runner.experiment.id)
 
-    existing_trials = get_trials(runner.database, runner.experiment.id)
-    completed_trials = [trial for trial in existing_trials if trial.has_finished]
-    completed_uuids = Set(trial.id for trial in completed_trials)
-    # Only take unrun trials
-    incomplete_trials = [trial for trial in runner.experiment if !(trial.id in completed_uuids)]
+            completed_trials = [trial for trial in existing_trials if trial.has_finished]
+            completed_uuids = Set(trial.id for trial in completed_trials)
+            # Only take unrun trials
+            incomplete_trials = [trial for trial in runner.experiment if !(trial.id in completed_uuids)]
 
-    # Push all incomplete trials to the database
-    for trial in incomplete_trials
-        push!(runner.database, trial)
-    end
+            # Push all incomplete trials to the database
+            for trial in incomplete_trials
+                push!(runner.database, trial)
+            end
 
-    prepare_environment(runner)
+            current_directory = pwd()
+            if runner.execution_mode == DistributedMode
+                @everywhere using Pkg
+                @everywhere Pkg.activate(".")
+                @everywhere using NNE.Experimenter
+                # Make sure each worker is in the right directory
+                eval(Meta.parse("@everywhere cd(\"$current_directory\");"))
+            end
 
-    run_trials(runner, incomplete_trials)
 
-    nothing
-end
+            include_file = runner.experiment.include_file
+            if !ismissing(include_file)
+                if runner.execution_mode == DistributedMode
+                    eval(Meta.parse("@everywhere include(\"$include_file\");"))
+                end
+                eval(Meta.parse("include(\"$include_file\")";))
+            end
 
-function prepare_environment(runner::Runner)
-    if runner.execution_mode == DistributedMode
-        eval(Meta.parse("@everywhere using Pkg"))
-        eval(Meta.parse("@everywhere Pkg.activate(\".\")"))
-        eval(Meta.parse("@everywhere using NNE.Experimenter"))
-    end
 
-    global include_file = runner.experiment.include_file
-
-    if !ismissing(include_file)
-        if runner.execution_mode == DistributedMode
-            eval(Meta.parse("@everywhere include(\"$include_file\");"))
+            run_trials(runner, incomplete_trials)
         end
-        eval(Meta.parse("include(\"$include_file\")";))
     end
-    nothing
 end
 
 function execute_trial(function_name::AbstractString, trial::Trial)::Tuple{UUID,Dict{Symbol,Any}}
     fn = eval(Meta.parse("$function_name"))
-    results = fn(; trial.configuration...)
+    results = fn(trial.configuration)
     return (trial.id, results)
 end
 
