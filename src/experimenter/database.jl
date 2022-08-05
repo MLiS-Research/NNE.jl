@@ -141,7 +141,7 @@ function restore_from_db(db::ExperimentDatabase, experiment::Experiment)
     if length(eachrow(df)) > 0
         existing_experiment = Experiment(first(eachrow(df)))
         if (!check_overlap(experiment, existing_experiment))
-            error("Found existing experiment with name $(experiment.name), but with different configuration. Use a different name.")
+            error("Found existing experiment with name \"$(experiment.name)\", but with different parameters. Use a different name.")
         end
         return existing_experiment
     end
