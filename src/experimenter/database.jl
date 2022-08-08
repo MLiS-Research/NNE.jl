@@ -184,3 +184,41 @@ function complete_trial!(db::ExperimentDatabase, trial_id::UUID, results::Dict{S
     DBInterface.execute(stmt, vs)
     nothing
 end
+
+"""
+    merge_databases!(primary_db, secondary_db)
+
+Searches all of the records from the secondary database and adds them to the first database.
+"""
+function merge_databases!(primary_db::ExperimentDatabase, secondary_db::ExperimentDatabase)
+    primary_experiments = get_experiments(primary_db)
+    primary_experiment_dict = Dict{String,Experiment}(ex.name => ex for ex in primary_experiments)
+    secondary_experiments = get_experiments(secondary_db)
+
+    for experiment in secondary_experiments
+        if haskey(primary_experiment_dict, experiment.name)
+            @debug "Found $(experiment.name) in primary database."
+            existing_experiment = primary_experiment_dict[experiment.name]
+            if check_overlap(experiment, existing_experiment)
+                primary_trials = get_trials_by_name(primary_db, experiment.name)
+                secondary_trials = get_trials_by_name(secondary_db, experiment.name)
+
+                for (a, b) in zip(primary_trials, secondary_trials)
+                    if (!a.has_finished && b.has_finished)
+                        # Add results from trials
+                        @debug "Updating trial $(trial.trial_index) with results in primary database."
+                        complete_trial!(primary_db, a.id, b.results)
+                    end
+                end
+            else
+                error("Experiment named '$(experiment.name)' found in primary database, but does not match configuration of the first.")
+            end
+        else
+            new_trials = get_trials_by_name(secondary_db, experiment.name)
+            push!(primary_db, experiment)
+            for trial in new_trials
+                push!(primary_db, trial)
+            end
+        end
+    end
+end

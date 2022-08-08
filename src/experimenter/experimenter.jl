@@ -11,4 +11,5 @@ export execute_trial, execute_trial_and_save_to_db_async
 export execute, Runner
 export SerialMode, MultithreadedMode, DistributedMode
 export restore_from_db
+export merge_databases!
 end
