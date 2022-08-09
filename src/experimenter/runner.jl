@@ -2,6 +2,7 @@ using Base
 using Distributed
 using Base.Iterators
 using Logging
+using ProgressBars
 
 @enum EXECUTEMODE SerialMode MultithreadedMode DistributedMode
 
@@ -11,7 +12,7 @@ Base.@kwdef struct Runner
     database::ExperimentDatabase
 end
 
-macro execute(experiment, database, mode=SerialMode)
+macro execute(experiment, database, mode=SerialMode, use_progress=false)
     quote
         $(esc(experiment)) = restore_from_db($(esc(database)), $(esc(experiment)))
         let runner = Runner(experiment=$(esc(experiment)), database=$(esc(database)), execution_mode=$(esc(mode)))
@@ -47,7 +48,7 @@ macro execute(experiment, database, mode=SerialMode)
             end
 
 
-            run_trials(runner, incomplete_trials)
+            run_trials(runner, incomplete_trials; use_progress=$(esc(use_progress)))
         end
     end
 end
@@ -75,10 +76,16 @@ function complete_trial_in_global_database(trial_id::UUID, results::Dict{Symbol,
     nothing
 end
 
-function run_trials(runner::Runner, trials::AbstractArray{Trial})
+function run_trials(runner::Runner, trials::AbstractArray{Trial}; use_progress=false)
     if length(trials) == 0
         @info "No incomplete trials found. Finished."
         return nothing
+    end
+
+    iter = use_progress ? ProgressBar(trials) : trials
+    if runner == DistributedMode && length(workers()) <= 1
+        @info "Only one worker found, switching to serial execution."
+        runner = SerialMode
     end
 
     if runner == DistributedMode
@@ -86,16 +93,17 @@ function run_trials(runner::Runner, trials::AbstractArray{Trial})
         set_global_database(db)
         configurations = (x -> x.configuration).(trials)
         function_names = (_ -> runner.experiment.function_name).(trials)
+        use_progress && @debug "Progress bar not supported in distributed mode."
         pmap(execute_trial_and_save_to_db_async, workers(), function_names, configurations)
     elseif runner.execution_mode == MultithreadedMode
         @info "Running $(length(trials)) trials across $(Threads.nthreads()) threads"
-        Threads.@threads for trial in trials
+        Threads.@threads for trial in iter
             (id, results) = execute_trial(runner.experiment.function_name, trial)
             complete_trial!(runner.database, id, results)
         end
     else
         @info "Running $(length(trials)) trials"
-        for trial in trials
+        for trial in iter
             (id, results) = execute_trial(runner.experiment.function_name, trial)
             complete_trial!(runner.database, id, results)
         end
