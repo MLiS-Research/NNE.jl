@@ -56,3 +56,48 @@ function measure_test_accuracy(info_dict; device=cpu, outputs=2)
     accuracies = [Flux.mean(reshape((x -> x[1] - 1).(argmax(m(features) |> cpu, dims=1)), :) .== labels) for m in models]
     return accuracies
 end
+
+function plot_avg_loss(results, new_plot=true; kwargs...)
+    losses = (x->x[:observations]).(results)
+    med_duration = median((x->x[:duration].value).(results)) ./ 1000.0
+    mean_loss = mean(losses)
+    std_loss = std(losses)
+    plot_fn = new_plot ? plot : plot!
+    x_scale = LinRange(0, med_duration, length(mean_loss))
+    plt = plot_fn(x_scale, mean_loss; ribbon=(std_loss, std_loss), legend=false, kwargs...)
+    xlabel!("Runtime (s)")
+    ylabel!("Mean Loss")
+    return plt
+end
+
+function conv_1d(y, w=500, sigma=100.0)
+    f(x) = exp(-0.5 * x * x / (sigma * sigma)) / (sigma * sqrt(2*π))
+    kernel = f.(collect(-w:w))
+    kernel = kernel ./ sum(kernel)
+    conv_y = similar(y)
+    for i in eachindex(y)
+        min_i = max(1, i-w)
+        max_i = min(length(y), i+w)
+        kernel_r = (w-(i-min_i)+1):(w+(max_i-i)+1)
+        r = (min_i:max_i)
+        norm_kernel = kernel[kernel_r]
+        norm_kernel ./= sum(norm_kernel)
+        conv_y[r] .= sum(y[r].*norm_kernel)
+    end
+    return conv_y
+end
+
+function plot_acceptance(results, new_plot=true; kwargs...)
+    losses = (x->x[:observations]).(results)
+    acceptances = (x->Float64.(diff(x).!=0)).(losses)
+    conv_acceptances = (x->conv_1d(x)).(acceptances)
+    med_duration = median((x->x[:duration].value).(results)) ./ 1000.0
+    mean_acceptances = mean(conv_acceptances)
+    std_acceptances = std(conv_acceptances)
+    plot_fn = new_plot ? plot : plot!
+    x_scale = LinRange(0, med_duration, length(mean_acceptances))
+    plt = plot_fn(x_scale, mean_acceptances; ribbon=(std_acceptances, std_acceptances), legend=false, kwargs...)
+    xlabel!("Runtime (s)")
+    ylabel!("Mean Loss")
+    return plt
+end
