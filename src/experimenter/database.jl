@@ -3,6 +3,7 @@ using Logging
 using Base
 using UUIDs
 using DataFrames
+using .Snapshots
 
 struct ExperimentDatabase
     experiment_folder::AbstractString
@@ -10,6 +11,7 @@ struct ExperimentDatabase
     _db::SQLite.DB
     _experimentInsertStmt::SQLite.Stmt
     _trialInsertStmt::SQLite.Stmt
+    _snapshotInsertStmt::SQLite.Stmt
 end
 
 function get_experiment_insert_stmt(db::SQLite.DB)
@@ -32,6 +34,11 @@ end
 function Base.push!(db::ExperimentDatabase, trial::Trial)
     vs = (string(trial.id), string(trial.experiment_id), trial.configuration, trial.results, trial.trial_index, trial.has_finished)
     SQLite.execute(db._trialInsertStmt, vs)
+    nothing
+end
+function Base.push!(db::ExperimentDatabase, snapshot::Snapshot)
+    vs = (string(snapshot.id), string(snapshot.trial_id), snapshot.state, snapshot.label)
+    SQLite.execute(db._experimentInsertStmt, vs)
     nothing
 end
 
@@ -72,11 +79,14 @@ function prepare_db(db::SQLite.DB)
     );
     """
 
+    snapshots_query = Snapshots.snapshot_table_query
+
     # Allow foreign keys
     SQLite.execute(db, "PRAGMA foreign_keys = ON;")
 
     SQLite.execute(db, experiments_query)
     SQLite.execute(db, trials_query)
+    SQLite.execute(db, snapshots_query)
     nothing
 end
 
@@ -95,7 +105,8 @@ function open_db(database_name, experiment_folder=joinpath(pwd(), "experiments")
     prepare_db(_sqliteDB)
     experiment_stmt = get_experiment_insert_stmt(_sqliteDB)
     trial_stmt = get_trial_insert_stmt(_sqliteDB)
-    db = ExperimentDatabase(experiment_folder, database_name, _sqliteDB, experiment_stmt, trial_stmt)
+    snapshot_stmt = Snapshots.get_snapshot_insert_stmt(_sqliteDB)
+    db = ExperimentDatabase(experiment_folder, database_name, _sqliteDB, experiment_stmt, trial_stmt, snapshot_stmt)
 
     return db
 end
@@ -182,6 +193,12 @@ function complete_trial!(db::ExperimentDatabase, trial_id::UUID, results::Dict{S
     stmt = SQLite.Stmt(db._db, "UPDATE Trials SET results = @results, has_finished = @finished WHERE id = @id")
     vs = Dict{Symbol,Any}(:results => results, :finished => true, :id => string(trial_id))
     DBInterface.execute(stmt, vs)
+    nothing
+end
+
+function save_snapshot(db::ExperimentDatabase, trial_id::UUID, state::Dict{Symbol, Any}, label=missing)
+    snapshot = Snapshots.Snapshot(trial_id=trial_id, state=state, label=label)
+    push!(db, snapshot)
     nothing
 end
 

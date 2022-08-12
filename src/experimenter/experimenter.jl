@@ -12,4 +12,7 @@ export execute, Runner
 export SerialMode, MultithreadedMode, DistributedMode
 export restore_from_db
 export merge_databases!
+
+include("snapshots.jl")
+
 end
