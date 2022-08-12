@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS Snapshots (
     trial_id TEXT NOT NULL,
     state BLOB,
     label TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
     FOREIGN KEY (trial_id) REFERENCES Trials (id)
         ON DELETE NO ACTION ON UPDATE NO ACTION
 );

@@ -45,9 +45,9 @@ function map_params_to_trajectory(kwargs, trial_id::UUID)
         if haskey(kwargs, :max_epochs)
             kwargs[:epochs] = kwargs[:max_epochs]
         end
-        dict = clean_info_dict(solve_mnist_sa(; kwargs...))
+        dict = clean_info_dict(solve_mnist_sa(; trial_id=trial_id, kwargs...))
     else
-        dict = clean_info_dict(solve_mnist_trajectory(; kwargs...))
+        dict = clean_info_dict(solve_mnist_trajectory(; trial_id=trial_id, kwargs...))
     end
 
     dict[:start_time] = start_time

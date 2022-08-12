@@ -210,7 +210,7 @@ end
 
 function latest_snapshot(db::ExperimentDatabase, trial_id)
     trial_id = SQLite.esc_id(string(trial_id))
-    df = SQLite.DBInterface.execute(db._db, "SELECT * FROM Snapshots WHERE trial_id = $trial_id ORDER BY cast(created_at as datetime) DESC LIMIT 1") |> DataFrame
+    df = SQLite.DBInterface.execute(db._db, "SELECT * FROM Snapshots WHERE trial_id = $trial_id ORDER BY created_at DESC LIMIT 1") |> DataFrame
     results = [Snapshot(row) for row in eachrow(df)]
     if length(results)==0
         return nothing
@@ -221,7 +221,7 @@ end
 
 function get_snapshots(db::ExperimentDatabase, trial_id)
     trial_id = SQLite.esc_id(string(trial_id))
-    df = SQLite.DBInterface.execute(db._db, "SELECT * FROM Snapshots WHERE trial_id = $trial_id ORDER BY cast(created_at as datetime) DESC") |> DataFrame
+    df = SQLite.DBInterface.execute(db._db, "SELECT * FROM Snapshots WHERE trial_id = $trial_id ORDER BY created_at DESC") |> DataFrame
     results = [Snapshot(row) for row in eachrow(df)]
 end
 

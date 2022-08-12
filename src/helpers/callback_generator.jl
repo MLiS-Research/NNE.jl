@@ -55,8 +55,8 @@ function move_state(state, device)
     return state |> device
 end
 
-create_callbacks(::Nothing) = nothing
-function create_callbacks(trial_id::UUID, device, info=nothing; save_final_snapshot::Bool = false, use_previous_snapshot::Bool=false, alternate_trial_id=nothing, snapshot_every_n=nothing, snapshot_label=missing)
+create_callbacks(::Nothing, device; kwargs...) = nothing
+function create_callbacks(trial_id::UUID, device, info=nothing; save_final_snapshot::Bool = false, use_previous_snapshot::Bool=false, alternate_trial_id=nothing, snapshot_every_n=nothing, snapshot_label=missing, kwargs...)
     cb_storage = Dict{Symbol, Any}()
     can_restore = false
     if use_previous_snapshot
