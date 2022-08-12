@@ -38,7 +38,7 @@ function Base.push!(db::ExperimentDatabase, trial::Trial)
 end
 function Base.push!(db::ExperimentDatabase, snapshot::Snapshot)
     vs = (string(snapshot.id), string(snapshot.trial_id), snapshot.state, snapshot.label)
-    SQLite.execute(db._experimentInsertStmt, vs)
+    SQLite.execute(db._snapshotInsertStmt, vs)
     nothing
 end
 
@@ -90,8 +90,8 @@ function prepare_db(db::SQLite.DB)
     nothing
 end
 
-function open_db(database_name, experiment_folder=joinpath(pwd(), "experiments"), create_folder=true)::ExperimentDatabase
-    if (!Base.Filesystem.isdir(experiment_folder))
+function open_db(database_name, experiment_folder=joinpath(pwd(), "experiments"), create_folder=true; in_memory=false)::ExperimentDatabase
+    if !in_memory && (!Base.Filesystem.isdir(experiment_folder))
         if create_folder
             @info "Creating $experiment_folder for experiments folder."
             Base.Filesystem.mkdir(experiment_folder)
@@ -101,7 +101,7 @@ function open_db(database_name, experiment_folder=joinpath(pwd(), "experiments")
             error(error_msg)
         end
     end
-    _sqliteDB = SQLite.DB(joinpath(experiment_folder, database_name))
+    _sqliteDB = in_memory ? SQLite.DB() : SQLite.DB(joinpath(experiment_folder, database_name))
     prepare_db(_sqliteDB)
     experiment_stmt = get_experiment_insert_stmt(_sqliteDB)
     trial_stmt = get_trial_insert_stmt(_sqliteDB)
@@ -165,9 +165,9 @@ function get_experiments(db::ExperimentDatabase)
     return [Experiment(row) for row in eachrow(df)]
 end
 
-function get_trial(db::ExperimentDatabase, trial_index)
-    trial_index = SQLite.esc_id(string(trial_index))
-    df = (SQLite.DBInterface.execute(db._db, "SELECT * FROM Trials WHERE id = $trial_index") |> DataFrame)
+function get_trial(db::ExperimentDatabase, trial_id)
+    trial_id = SQLite.esc_id(string(trial_id))
+    df = (SQLite.DBInterface.execute(db._db, "SELECT * FROM Trials WHERE id = $trial_id") |> DataFrame)
     return Trial(first(eachrow(df)))
 end
 
@@ -195,12 +195,36 @@ function complete_trial!(db::ExperimentDatabase, trial_id::UUID, results::Dict{S
     DBInterface.execute(stmt, vs)
     nothing
 end
+function mark_trial_as_incomplete!(db::ExperimentDatabase, trial_id)
+    stmt = SQLite.Stmt(db._db, "UPDATE Trials SET has_finished = @finished WHERE id = @id")
+    vs = Dict{Symbol,Any}(:finished => false, :id => string(trial_id))
+    DBInterface.execute(stmt, vs)
+    nothing
+end
 
-function save_snapshot(db::ExperimentDatabase, trial_id::UUID, state::Dict{Symbol, Any}, label=missing)
+function save_snapshot!(db::ExperimentDatabase, trial_id::UUID, state::Dict{Symbol, Any}, label=missing)
     snapshot = Snapshots.Snapshot(trial_id=trial_id, state=state, label=label)
     push!(db, snapshot)
     nothing
 end
+
+function latest_snapshot(db::ExperimentDatabase, trial_id)
+    trial_id = SQLite.esc_id(string(trial_id))
+    df = SQLite.DBInterface.execute(db._db, "SELECT * FROM Snapshots WHERE trial_id = $trial_id ORDER BY cast(created_at as datetime) DESC LIMIT 1") |> DataFrame
+    results = [Snapshot(row) for row in eachrow(df)]
+    if length(results)==0
+        return nothing
+    else
+        return first(results)
+    end
+end
+
+function get_snapshots(db::ExperimentDatabase, trial_id)
+    trial_id = SQLite.esc_id(string(trial_id))
+    df = SQLite.DBInterface.execute(db._db, "SELECT * FROM Snapshots WHERE trial_id = $trial_id ORDER BY cast(created_at as datetime) DESC") |> DataFrame
+    results = [Snapshot(row) for row in eachrow(df)]
+end
+
 
 """
     merge_databases!(primary_db, secondary_db)

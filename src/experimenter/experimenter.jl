@@ -1,5 +1,6 @@
 module Experimenter
 
+include("snapshots.jl")
 include("experiment.jl")
 include("database.jl")
 include("runner.jl")
@@ -12,7 +13,7 @@ export execute, Runner
 export SerialMode, MultithreadedMode, DistributedMode
 export restore_from_db
 export merge_databases!
+export get_snapshots, latest_snapshot, save_snapshot!, mark_trial_as_incomplete!
 
-include("snapshots.jl")
 
 end

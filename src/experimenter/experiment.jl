@@ -90,6 +90,20 @@ Base.iterate(v::IterableVariable) = iterate(v.iterator)
 Base.iterate(v::IterableVariable, state) = iterate(v.iterator, state)
 extract_value(v::IterableVariable, i) = getindex(v.iterator, i)
 
+"""
+    Experiment
+
+A database object for storing the configuration options of an experiment.
+
+The signature of the function supplied should be:
+```julia
+fn(configuration::Dict{Symbol, Any}, trial_id::UUID)
+```
+
+The function should be available when including the file provided.
+
+A name is required to uniquely label this experiment.
+"""
 Base.@kwdef struct Experiment
     id::UUID = uuid4()
     name::AbstractString
