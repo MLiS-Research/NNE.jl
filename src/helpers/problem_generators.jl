@@ -15,7 +15,13 @@ function create_trajectory_problem(loss_fn, initial_state, τ, σ; rng=Random.GL
         push!(states, next_state)
     end
 
-    trajectory_loss_fn(state) = sum(loss_fn(s) for s in state)
+    function trajectory_loss_fn(state)
+        return loss_fn(state)
+    end
+    function trajectory_loss_fn(states::AbstractArray{T}) where {T<:AbstractArray}
+        return [loss_fn(state) for state in states]
+    end
+    
     obs = TPS.SimpleObservable(trajectory_loss_fn)
     return DTProblem(obs, states)
 end

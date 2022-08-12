@@ -1,6 +1,8 @@
 using NNE
+using NNE.Experimenter
 using Test
+using SafeTestsets
 
-@testset "NNE.jl" begin
-    # Write your tests here.
+@safetestset "Experimenter" begin
+    include("experimenter/experimenter.jl")
 end

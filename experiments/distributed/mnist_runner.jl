@@ -3,6 +3,7 @@ using TPS
 using Flux
 using Dates
 using Random
+using UUIDs
 
 function clean_info_dict(dict)
     dict[:initial_state] = TPS.get_initial_state(dict[:solution].problem)
@@ -25,7 +26,7 @@ function clean_info_dict(dict)
     return dict
 end
 
-function map_params_to_trajectory(kwargs)
+function map_params_to_trajectory(kwargs, trial_id::UUID)
     start_time = now()
     if !(typeof(kwargs) <: Dict)
         kwargs = Dict(kwargs)

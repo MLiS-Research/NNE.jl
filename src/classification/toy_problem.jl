@@ -9,7 +9,7 @@ function generate_toy_dataset(n_samples::Int, seed::Int=67859863)
     data = rand(rng, 2, n_samples) .* 2 .- 1 # Dimension 1 is the data dim, 2 is the number of samples
     labels = (Int8.(vec((data[1, :] .* 0.8 - data[1, :] .* 0.2 .- 0.2) .< data[2, :]).+1)) # Classes are either 1 or 2
     labels_one_hot = zeros(2, n_samples)
-    @inbounds for i=1:length(labels)
+    for i in eachindex(labels)
         labels_one_hot[labels[i], i] = 1
     end
     
@@ -35,16 +35,14 @@ function construct_toy_problem(τ, σ=1.0; n_samples::Int=128, data_seed::Int=67
     return create_problem(loss_fn, state, τ, σ; rng=rng)
 end
 
-function construct_algorithm(τ, s, σ; fraction_to_include=1.0)
+function construct_algorithm(τ, s, σ)
     if τ==1
-        return MetropolisHastings.get_guassian_mh_alg(s, σ)
+        return MetropolisHastings.gaussian_sa_algorithm(s, σ)
     else
-        if τ < 4
-            return MetropolisHastings.get_shooting_mh_alg(s, σ; fraction_to_include)
-        else
-            return MetropolisHastings.get_shooting_and_bridging_mh_alg(s, σ; fraction_to_include, max_width=4)
-        end
+        return MetropolisHastings.gaussian_trajectory_algorithm(s, σ; max_width = 1)
     end
 end
+
+export construct_toy_problem, construct_algorithm
 
 end
