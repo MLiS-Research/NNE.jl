@@ -7,11 +7,15 @@ using TPS.MetropolisHastings
 using TPS.SimulatedAnnealing
 using TPS.DiscreteTrajectory
 using TPS.Convergence
+using TPS.Callbacks
 using Random
 using ProgressBars
 using Plots
+import ..CallbackGenerator: create_callbacks
+
 
 export generate_mnist_dataset, generate_mnist_model, get_mnist_testing_dataset, solve_mnist_sa, solve_mnist_sa_automatic, solve_mnist_trajectory, solve_mnist_trajectory_automatic
+
 
 function generate_mnist_model(; outputs=10, device=cpu, seed=948679378)
     previous_state = copy(Random.default_rng())
@@ -101,11 +105,13 @@ function create_mnist_trajectory_state_and_loss(τ, σ, n_samples; rng=Random.GL
 end
 
 
-function solve_mnist_sa(; s=500.0, σ=0.001, epochs=100000, n_samples=4096, fraction_to_include=1.0, device=cpu, outputs=2, show_progress=false, kwargs...)
+
+function solve_mnist_sa(; s=500.0, σ=0.001, epochs=100000, n_samples=4096, fraction_to_include=1.0, device=cpu, outputs=2, show_progress=false, trial_id=nothing, kwargs...)
     problem, info = create_mnist_sa_problem(n_samples; device, outputs)
+    cb = create_callbacks(trial_id, device, info; kwargs...)
     alg = TPS.MetropolisHastings.gaussian_sa_algorithm(s, σ; params_changed_frac=fraction_to_include)
     iter = show_progress ? ProgressBar(1:epochs) : epochs
-    solution = solve(problem, alg, iter)
+    solution = solve(problem, alg, iter; cb=cb)
     info[:solution] = solution
     info[:s] = s
     info[:σ] = σ
@@ -117,27 +123,7 @@ function solve_mnist_sa(; s=500.0, σ=0.001, epochs=100000, n_samples=4096, frac
     return info
 end
 
-function solve_mnist_sa_automatic(; s=200.0, σ=0.001, n_samples=2048, device=cpu, outputs=2, fraction_to_include=1.0, warmup_steps=0, polling_frequency=1, max_buffer_size=10000, relative_gradient_size=1e-4, relative_error_size=2e-2, max_epochs=100000)
-    problem, info = create_mnist_sa_problem(n_samples; device, outputs)
-    alg = TPS.MetropolisHastings.gaussian_sa_algorithm(s, σ; params_changed_frac=fraction_to_include)
-    iteration_options = AutomaticConvergenceOptions(warmup_steps, polling_frequency, max_buffer_size, max_epochs, relative_gradient_size, relative_error_size)
-    solution = solve(problem, alg, iteration_options)
-    info[:solution] = solution
-    info[:s] = s
-    info[:σ] = σ
-    info[:τ] = 1
-    info[:fraction_to_include] = fraction_to_include
-    info[:warmup_steps] = warmup_steps
-    info[:polling_frequency] = polling_frequency
-    info[:max_buffer_size] = max_buffer_size
-    info[:max_epochs] = max_epochs
-    info[:relative_gradient_size] = relative_gradient_size
-    info[:relative_error_size] = relative_error_size
-    return info
-end
-
-
-function solve_mnist_trajectory(; τ=4, s=50.0, σ=0.001, epochs=10000, n_samples=2048, device=cpu, outputs=2, show_progress=false, fraction_to_include=1.0, max_perturb_models=nothing, kwargs...)
+function solve_mnist_trajectory(; τ=4, s=50.0, σ=0.001, epochs=10000, n_samples=2048, device=cpu, outputs=2, show_progress=false, fraction_to_include=1.0, max_perturb_models=nothing, trial_id=nothing, kwargs...)
     problem, info = create_mnist_trajectory_state_and_loss(τ, σ, n_samples; device, outputs)
     if τ > 2
         alg = gaussian_trajectory_algorithm(s, σ; params_changed_frac=fraction_to_include, max_width=max_perturb_models, chance_to_shoot=(2 / τ))
@@ -145,7 +131,8 @@ function solve_mnist_trajectory(; τ=4, s=50.0, σ=0.001, epochs=10000, n_sample
         alg = gaussian_trajectory_algorithm(s, σ; params_changed_frac=fraction_to_include, max_width=max_perturb_models)
     end
     iter = show_progress ? ProgressBar(1:epochs) : epochs
-    solution = solve(problem, alg, iter)
+    cb = create_callbacks(trial_id, device, info; kwargs...)
+    solution = solve(problem, alg, iter; cb=cb)
     info[:solution] = solution
     info[:s] = s
     info[:σ] = σ
@@ -154,25 +141,6 @@ function solve_mnist_trajectory(; τ=4, s=50.0, σ=0.001, epochs=10000, n_sample
     info[:n_samples] = n_samples
     info[:outputs] = outputs
     info[:fraction_to_include] = fraction_to_include
-    return info
-end
-
-function solve_mnist_trajectory_automatic(; τ=4, s=500.0, σ=0.05, n_samples=2048, device=cpu, outputs=2, fraction_to_include=1.0, warmup_steps=0, polling_frequency=1, max_buffer_size=10000, relative_gradient_size=1e-4, relative_error_size=2e-2, max_epochs=100000, max_perturb_models::Int=nothing)
-    problem, info = create_mnist_trajectory_state_and_loss(τ, σ, n_samples; device, outputs)
-    alg = gaussian_trajectory_algorithm(s, σ; params_changed_frac=fraction_to_include, max_width=max_perturb_models, chance_to_shoot=(τ > 2 ? 2 / τ : nothing))
-    iteration_options = AutomaticConvergenceOptions(warmup_steps, polling_frequency, max_buffer_size, max_epochs, relative_gradient_size, relative_error_size)
-    sol = solve(problem, alg, iteration_options)
-    info[:solution] = sol
-    info[:s] = s
-    info[:σ] = σ
-    info[:τ] = τ
-    info[:fraction_to_include] = fraction_to_include
-    info[:warmup_steps] = warmup_steps
-    info[:polling_frequency] = polling_frequency
-    info[:max_buffer_size] = max_buffer_size
-    info[:max_epochs] = max_epochs
-    info[:relative_gradient_size] = relative_gradient_size
-    info[:relative_error_size] = relative_error_size
     return info
 end
 

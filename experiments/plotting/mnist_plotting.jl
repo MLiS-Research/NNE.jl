@@ -57,15 +57,15 @@ function measure_test_accuracy(info_dict; device=cpu, outputs=2)
     return accuracies
 end
 
-function plot_avg_loss(results, new_plot=true; kwargs...)
+function plot_avg_loss(results, new_plot=true; should_scale_x=false, kwargs...)
     losses = (x->x[:observations]).(results)
     med_duration = median((x->x[:duration].value).(results)) ./ 1000.0
     mean_loss = mean(losses)
     std_loss = std(losses)
     plot_fn = new_plot ? plot : plot!
-    x_scale = LinRange(0, med_duration, length(mean_loss))
+    x_scale = should_scale_x ? LinRange(0, med_duration, length(mean_loss)) : 1:length(mean_loss)
     plt = plot_fn(x_scale, mean_loss; ribbon=(std_loss, std_loss), legend=false, kwargs...)
-    xlabel!("Runtime (s)")
+    xlabel!(should_scale_x ? "Runtime (s)" : "Epochs")
     ylabel!("Mean Loss")
     return plt
 end
@@ -87,17 +87,16 @@ function conv_1d(y, w=500, sigma=100.0)
     return conv_y
 end
 
-function plot_acceptance(results, new_plot=true; kwargs...)
-    losses = (x->x[:observations]).(results)
-    acceptances = (x->Float64.(diff(x).!=0)).(losses)
+function plot_acceptance(results, new_plot=true; should_scale_x=false, kwargs...)
+    acceptances = (x->Float64.(x[:acceptances])).(results)
     conv_acceptances = (x->conv_1d(x)).(acceptances)
     med_duration = median((x->x[:duration].value).(results)) ./ 1000.0
     mean_acceptances = mean(conv_acceptances)
     std_acceptances = std(conv_acceptances)
     plot_fn = new_plot ? plot : plot!
-    x_scale = LinRange(0, med_duration, length(mean_acceptances))
+    x_scale = should_scale_x ? LinRange(0, med_duration, length(mean_acceptances)) : 1:length(mean_acceptances)
     plt = plot_fn(x_scale, mean_acceptances; ribbon=(std_acceptances, std_acceptances), legend=false, kwargs...)
-    xlabel!("Runtime (s)")
+    xlabel!(should_scale_x ? "Runtime (s)" : "Epochs")
     ylabel!("Mean Loss")
     return plt
 end
