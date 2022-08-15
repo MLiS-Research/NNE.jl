@@ -4,6 +4,7 @@ import NNE.Experimenter: open_db, @execute
 using SafeTestsets
 using Test
 import Base.Iterators: product
+using Distributed
 
 function get_test_config()
     return Dict{Symbol,Any}(
@@ -30,18 +31,21 @@ function get_experiment(name, config)
     return experiment
 end
 
-@testset "Restore from experiment" begin
+@testset "Restore from experiment" for mode in (SerialMode, MultithreadedMode, DistributedMode)
+    if mode == DistributedMode
+        ps = addprocs(2)
+    end
     experiment = get_experiment("Initial trial", get_test_config())
     database = open_db("restore from trial test"; in_memory=true)
 
     file_path = @__FILE__
     directory = dirname(file_path)
 
-    @execute experiment database SerialMode false directory
+    @execute experiment database mode false directory
 
     restore_experiment = get_experiment("Second trial", get_test_config(experiment))
 
-    @execute restore_experiment database SerialMode false directory
+    @execute restore_experiment database mode false directory
 
     first_trials = get_trials(database, experiment.id)
     restored_trials = get_trials(database, restore_experiment.id)
@@ -53,5 +57,8 @@ end
         @test !ismissing(restored_trial.results)
 
         @test all(original_trial.results[:final_state] .== restored_trial.results[:initial_state])
+    end
+    if mode == DistributedMode
+        rmprocs(ps)
     end
 end
