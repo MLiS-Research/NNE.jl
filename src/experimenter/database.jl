@@ -202,7 +202,7 @@ function mark_trial_as_incomplete!(db::ExperimentDatabase, trial_id)
     nothing
 end
 
-function save_snapshot!(db::ExperimentDatabase, trial_id::UUID, state::Dict{Symbol, Any}, label=missing)
+function save_snapshot!(db::ExperimentDatabase, trial_id::UUID, state::Dict{Symbol,Any}, label=missing)
     snapshot = Snapshots.Snapshot(trial_id=trial_id, state=state, label=label)
     push!(db, snapshot)
     nothing
@@ -212,7 +212,7 @@ function latest_snapshot(db::ExperimentDatabase, trial_id)
     trial_id = SQLite.esc_id(string(trial_id))
     df = SQLite.DBInterface.execute(db._db, "SELECT * FROM Snapshots WHERE trial_id = $trial_id ORDER BY created_at DESC LIMIT 1") |> DataFrame
     results = [Snapshot(row) for row in eachrow(df)]
-    if length(results)==0
+    if length(results) == 0
         return nothing
     else
         return first(results)
@@ -262,4 +262,18 @@ function merge_databases!(primary_db::ExperimentDatabase, secondary_db::Experime
             end
         end
     end
+
+    df = SQLite.DBInterface.execute(primary_db._db, "SELECT id FROM Snapshots") |> DataFrame
+    existing_snapshot_ids = Set(df.id)
+    secondary_snapshots = [Snapshot(row) for row in eachrow(SQLite.DBInterface.execute(secondary_db._db, "SELECT * FROM Snapshots") |> DataFrame)]
+
+    for snapshot in secondary_snapshots
+        if snapshot.id in existing_snapshot_ids
+            continue
+        end
+
+        push!(primary_db, snapshot)
+    end
+
+    nothing
 end
