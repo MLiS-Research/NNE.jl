@@ -12,7 +12,7 @@ using Random
 export create_callbacks, restore_state!
 
 restore_state!(problem, ::Nothing; kwargs...) = nothing
-function restore_state!(problem::DTProblem, restore_trial_id::UUID; kwargs...)
+function restore_state!(problem::DTProblem, restore_trial_id::UUID; device=cpu, kwargs...)
     results = get_results_from_trial_global_database(restore_trial_id)
     if ismissing(results)
         return nothing
@@ -21,19 +21,18 @@ function restore_state!(problem::DTProblem, restore_trial_id::UUID; kwargs...)
     final_states = results[:final_state]
 
     for (initial_state, final_state) in zip(problem.states, final_states)
-        copy!(initial_state, final_state)
+        initial_state .= (final_state |> device)
     end
     nothing
 end
-function restore_state!(problem::SAProblem, restore_trial_id::UUID; kwargs...)
+function restore_state!(problem::SAProblem, restore_trial_id::UUID; device=cpu, kwargs...)
     results = get_results_from_trial_global_database(restore_trial_id)
     if ismissing(results)
         return nothing
     end
 
     final_state = results[:final_state]
-
-    copy!(problem.state, final_state)
+    problem.state .= (final_state |> device)
     nothing
 end
 

@@ -11,7 +11,7 @@ using TPS.Callbacks
 using Random
 using ProgressBars
 using Plots
-import ..CallbackGenerator: create_callbacks
+import ..CallbackGenerator: create_callbacks, restore_state!
 
 
 export generate_mnist_dataset, generate_mnist_model, get_mnist_testing_dataset, solve_mnist_sa, solve_mnist_sa_automatic, solve_mnist_trajectory, solve_mnist_trajectory_automatic
@@ -108,7 +108,7 @@ end
 
 function solve_mnist_sa(; s=500.0, σ=0.001, epochs=100000, n_samples=4096, fraction_to_include=1.0, device=cpu, outputs=2, show_progress=false, trial_id=nothing, restore_from_complete_trial_id=nothing, kwargs...)
     problem, info = create_mnist_sa_problem(n_samples; device, outputs)
-    restore_state!(problem, restore_from_complete_trial_id)
+    restore_state!(problem, restore_from_complete_trial_id; device)
     cb = create_callbacks(trial_id, device, info; kwargs...)
     alg = TPS.MetropolisHastings.gaussian_sa_algorithm(s, σ; params_changed_frac=fraction_to_include)
     iter = show_progress ? ProgressBar(1:epochs) : epochs
@@ -126,7 +126,7 @@ end
 
 function solve_mnist_trajectory(; τ=4, s=50.0, σ=0.001, epochs=10000, n_samples=2048, device=cpu, outputs=2, show_progress=false, fraction_to_include=1.0, max_perturb_models=nothing, trial_id=nothing, restore_from_complete_trial_id=nothing, kwargs...)
     problem, info = create_mnist_trajectory_state_and_loss(τ, σ, n_samples; device, outputs)
-    restore_state!(problem, restore_from_complete_trial_id)
+    restore_state!(problem, restore_from_complete_trial_id; device)
     if τ > 2
         alg = gaussian_trajectory_algorithm(s, σ; params_changed_frac=fraction_to_include, max_width=max_perturb_models, chance_to_shoot=(2 / τ))
     else
