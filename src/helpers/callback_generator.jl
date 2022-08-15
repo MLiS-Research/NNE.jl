@@ -9,7 +9,7 @@ import Flux: cpu, gpu
 using Logging
 using Random
 
-export create_callbacks
+export create_callbacks, restore_state!
 
 restore_state!(problem, ::Nothing; kwargs...) = nothing
 function restore_state!(problem::DTProblem, restore_trial_id::UUID; kwargs...)

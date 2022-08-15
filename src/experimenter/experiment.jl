@@ -3,6 +3,8 @@ using Base.Iterators
 using UUIDs
 
 abstract type AbstractVariable end
+abstract type AbstractProductVariable <: AbstractVariable end
+abstract type AbstractMatchVariable <: AbstractVariable end
 """
     count_values(entry)
 
@@ -37,7 +39,7 @@ function Base.iterate(v::AbstractVariable, i)
 end
 Base.length(v::AbstractVariable) = count_values(v)
 
-struct LinearVariable{T,Q<:Integer} <: AbstractVariable
+struct LinearVariable{T,Q<:Integer} <: AbstractProductVariable
     min_value::T
     max_value::T
     num_values::Q
@@ -51,7 +53,7 @@ end
 Base.eltype(::LinearVariable{T}) where {T} = promote(T, Float64)
 
 
-struct RepeatVariable{T,Q<:Integer} <: AbstractVariable
+struct RepeatVariable{T,Q<:Integer} <: AbstractProductVariable
     value::T
     num_repeats::Q
 end
@@ -62,7 +64,7 @@ function extract_value(v::RepeatVariable, i)
 end
 Base.eltype(::RepeatVariable{T}) where {T} = T
 
-struct LogLinearVariable{T,Q<:Integer} <: AbstractVariable
+struct LogLinearVariable{T,Q<:Integer} <: AbstractProductVariable
     min_value::T
     max_value::T
     num_values::Q
@@ -81,7 +83,7 @@ function extract_value(v::LogLinearVariable{T}, i) where {T}
 end
 Base.eltype(::LogLinearVariable{T}) where {T} = promote(Float64, T)
 
-struct IterableVariable{Q,T<:AbstractArray{Q}} <: AbstractVariable
+struct IterableVariable{Q,T<:AbstractArray{Q}} <: AbstractProductVariable
     iterator::T
 end
 count_values(v::IterableVariable) = length(v.iterator)
@@ -89,6 +91,16 @@ Base.eltype(::IterableVariable{Q,T}) where {Q,T} = Q
 Base.iterate(v::IterableVariable) = iterate(v.iterator)
 Base.iterate(v::IterableVariable, state) = iterate(v.iterator, state)
 extract_value(v::IterableVariable, i) = getindex(v.iterator, i)
+
+
+struct MatchIterableVariable{Q,T<:AbstractArray{Q}} <: AbstractMatchVariable
+    iterator::T
+end
+count_values(v::MatchIterableVariable) = length(v.iterator)
+Base.eltype(::MatchIterableVariable{Q,T}) where {Q,T} = Q
+Base.iterate(v::MatchIterableVariable) = iterate(v.iterator)
+Base.iterate(v::MatchIterableVariable, state) = iterate(v.iterator, state)
+extract_value(v::MatchIterableVariable, i) = getindex(v.iterator, i)
 
 """
     Experiment
@@ -110,7 +122,7 @@ Base.@kwdef struct Experiment
     include_file::Union{Missing,AbstractString} = missing
     function_name::AbstractString
     configuration::Dict{Symbol,Any}
-    num_trials::Int = mapreduce(count_values, *, values(configuration))
+    num_trials::Int = count_trials(configuration)
 end
 
 Base.@kwdef struct Trial
@@ -123,7 +135,14 @@ Base.@kwdef struct Trial
 end
 
 function count_trails(experiment::Experiment)
-    return mapreduce(count_values, *, values(experiment.configuration))
+    return count_trials(experiment.configuration)
+end
+
+function count_trials(config::Dict{Symbol,Any})
+    product_count = mapreduce(count_values, *, (v for v in values(config) if typeof(v) <: AbstractProductVariable))
+    match_counts = [length(v) for v in values(config) if typeof(v) <: AbstractMatchVariable]
+    @assert all(match_counts .== product_count) "All matched variables should have a length of $(product_count) - same as from products."
+    return product_count
 end
 
 function _construct_trial(id::UUID, experiment::Experiment, param_map, trial_index)
@@ -141,7 +160,13 @@ function _construct_trial(id::UUID, experiment::Experiment, param_map, trial_ind
 end
 
 function combinatorial_iterator(config)
-    return product((Iterators.map((v_i) -> Dict(sym => v_i), v) for (sym, v) in config if typeof(v) <: AbstractVariable)...)
+    product_iterator = product((Iterators.map((v_i) -> (sym, v_i), v) for (sym, v) in config if typeof(v) <: AbstractProductVariable)...)
+    match_vars = [(sym, v) for (sym, v) in config if typeof(v) <: AbstractMatchVariable]
+    if length(match_vars) == 0
+        return Iterators.map((p) -> (p...,), product_iterator)
+    end
+    match_iterator = Iterators.zip((Iterators.map((v_i) -> (sym, v_i), v) for (sym, v) in match_vars)...)
+    return [(p..., m...) for (p, m) in Iterators.zip(product_iterator, match_iterator)]
 end
 
 function getrng(id::UUID)
@@ -163,7 +188,7 @@ function Base.iterate(experiment::Experiment)
 
     param_map_tuple, iter_state = iterate(iter)
     # Include empty dict to remove type from parameters
-    param_map = merge(Dict{Symbol,Any}(), param_map_tuple...)
+    param_map = Dict{Symbol,Any}(sym => val for (sym, val) in param_map_tuple)
 
     trial = _construct_trial(uuid4(rng), experiment, param_map, 1)
 
@@ -180,7 +205,7 @@ function Base.iterate(experiment::Experiment, state)
     end
 
     param_map_tuple, iter_state = coll_iter
-    param_map = merge(Dict{Symbol,Any}(), param_map_tuple...)
+    param_map = Dict{Symbol,Any}(sym => val for (sym, val) in param_map_tuple)
 
     trial = _construct_trial(uuid4(rng), experiment, param_map, i)
 
