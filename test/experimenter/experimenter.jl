@@ -7,7 +7,7 @@ import Base.Iterators: product
 
 function get_test_config()
     return Dict{Symbol,Any}(
-        :n => IterableVariable([3,7]),
+        :n => IterableVariable([3, 7]),
         :m => 5,
         :flag => false,
         :label => "configuration",
@@ -26,7 +26,7 @@ function get_experiment(name, config)
 end
 
 @testset "Database Creation" begin
-    @test typeof(open_db("test"; in_memory=true))<:NNE.Experimenter.ExperimentDatabase
+    @test typeof(open_db("test"; in_memory=true)) <: NNE.Experimenter.ExperimentDatabase
 end
 
 @testset "Experiment creation" begin
@@ -42,7 +42,7 @@ end
     original_experiment = get_experiment("existing experiment", config)
     db = open_db("test"; in_memory=true)
     push!(db, original_experiment)
-    
+
     new_experiment = get_experiment("existing experiment", config)
     restored_experiment = restore_from_db(db, new_experiment)
     @test restored_experiment.id == original_experiment.id
@@ -87,4 +87,8 @@ end
 
 @safetestset "Snapshots" begin
     include("snapshots.jl")
+end
+
+@safetestset "Restore from trial" begin
+    include("restore_from_trial.jl")
 end

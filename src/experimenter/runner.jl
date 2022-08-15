@@ -81,9 +81,20 @@ function complete_trial_in_global_database(trial_id::UUID, results::Dict{Symbol,
     nothing
 end
 
-function save_snapshot_in_global_database(trial_id::UUID, state::Dict{Symbol, Any}, label=missing)
+function get_results_from_trial_global_database(trial_id::UUID)
+    if myid() != 1
+        return remotecall_fetch(get_results_from_trial_global_database, 1, (trial_id,))
+    end
+
+    global global_experiment_database
+    trial = get_trial(global_experiment_database, trial_id)
+
+    return trial.results
+end
+
+function save_snapshot_in_global_database(trial_id::UUID, state::Dict{Symbol,Any}, label=missing)
     # Redirect requests on worker nodes to the main node
-    if myid()!=1
+    if myid() != 1
         remotecall_wait(save_snapshot_in_global_database, 1, (trial_id, state, label))
         return nothing
     end
@@ -96,7 +107,7 @@ end
 
 function get_latest_snapshot_from_global_database(trial_id::UUID)
     # Redirect requests on worker nodes to main node
-    if myid()!=1
+    if myid() != 1
         return remotecall_wait(get_latest_snapshot, 1, (trial_id))
     end
 

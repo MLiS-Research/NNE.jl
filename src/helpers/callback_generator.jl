@@ -1,16 +1,44 @@
 module CallbackGenerator
 using TPS
 using TPS.Callbacks
+using TPS.SimulatedAnnealing
+using TPS.DiscreteTrajectory
 using ..Experimenter
 using UUIDs
 import Flux: cpu, gpu
 using Logging
 using Random
 
-export create_callbacks
+export create_callbacks, restore_state!
+
+restore_state!(problem, ::Nothing; kwargs...) = nothing
+function restore_state!(problem::DTProblem, restore_trial_id::UUID; kwargs...)
+    results = get_results_from_trial_global_database(restore_trial_id)
+    if ismissing(results)
+        return nothing
+    end
+
+    final_states = results[:final_state]
+
+    for (initial_state, final_state) in zip(problem.states, final_states)
+        copy!(initial_state, final_state)
+    end
+    nothing
+end
+function restore_state!(problem::SAProblem, restore_trial_id::UUID; kwargs...)
+    results = get_results_from_trial_global_database(restore_trial_id)
+    if ismissing(results)
+        return nothing
+    end
+
+    final_state = results[:final_state]
+
+    copy!(problem.state, final_state)
+    nothing
+end
 
 function sanitise_object(obj; skip_fields=Set{Symbol}())
-    sanitised_obj = Dict{Symbol, Any}()
+    sanitised_obj = Dict{Symbol,Any}()
     for field in fieldnames(typeof(obj))
         if field in skip_fields
             continue
@@ -28,7 +56,7 @@ function sanitise_object(obj; skip_fields=Set{Symbol}())
     end
     return sanitised_obj
 end
-function override_object!(obj, santised_obj::Dict{Symbol, Any}; skip_fields=Set{Symbol}(), fn=identity, apply_fn_to_fields=Set{Symbol}())
+function override_object!(obj, santised_obj::Dict{Symbol,Any}; skip_fields=Set{Symbol}(), fn=identity, apply_fn_to_fields=Set{Symbol}())
     obj_fields = fieldnames(typeof(obj))
     for (field, val) in santised_obj
         if field in skip_fields
@@ -45,7 +73,7 @@ function override_object!(obj, santised_obj::Dict{Symbol, Any}; skip_fields=Set{
         else
             setfield!(obj, field, val)
         end
-    end 
+    end
 end
 
 function move_state(states::AbstractArray{T}, device) where {T<:AbstractArray}
@@ -56,8 +84,8 @@ function move_state(state, device)
 end
 
 create_callbacks(::Nothing, device; kwargs...) = nothing
-function create_callbacks(trial_id::UUID, device, info=nothing; save_final_snapshot::Bool = false, use_previous_snapshot::Bool=false, alternate_trial_id=nothing, snapshot_every_n=nothing, snapshot_label=missing, kwargs...)
-    cb_storage = Dict{Symbol, Any}()
+function create_callbacks(trial_id::UUID, device, info=nothing; save_final_snapshot::Bool=false, use_previous_snapshot::Bool=false, alternate_trial_id=nothing, snapshot_every_n=nothing, snapshot_label=missing, kwargs...)
+    cb_storage = Dict{Symbol,Any}()
     can_restore = false
     if use_previous_snapshot
         snapshot = get_latest_snapshot_from_global_database(isnothing(alternate_trial_id) ? trial_id : alternate_trial_id)
@@ -73,7 +101,7 @@ function create_callbacks(trial_id::UUID, device, info=nothing; save_final_snaps
     end
     # Fields to skip in snapshots
     skip_fields = Set((:exclude_parameter_mask, :indices_changed, :observable))
-    
+
     function take_snapshot(deps::SolveDependencies)
         cb_storage[:current_state] = move_state(TPS.get_current_state(deps.solution), cpu)
         if isa(deps.solution, TPS.SimpleSolution)
@@ -94,15 +122,27 @@ function create_callbacks(trial_id::UUID, device, info=nothing; save_final_snaps
             return nothing
         end
         # restore rng
-        copy!(Random.default_rng(), cb_storage[:rng_state])
+        if haskey(cb_storage, :rng_state)
+            copy!(Random.default_rng(), cb_storage[:rng_state])
+        else
+            @debug "Did not find :rng_state in the snapshot state"
+        end
         TPS.set_current_state!(deps.solution, move_state(cb_storage[:current_state], device))
         if isa(deps.solution, TPS.SimpleSolution)
-            deps.solution.observations = cb_storage[:observations]
+            if haskey(cb_storage, :observations)
+                deps.solution.observations = cb_storage[:observations]
+            else
+                @debug "Did not find :observations in the snapshot state"
+            end
         end
         apply_fn_to_fields = Set((:state, :state_cache))
-        override_object!(deps.cache, cb_storage[:cache]; fn=(x->move_state(x, device)), apply_fn_to_fields, skip_fields)
+        override_object!(deps.cache, cb_storage[:cache]; fn=(x -> move_state(x, device)), apply_fn_to_fields, skip_fields)
         if !isnothing(info)
-            info[:acceptances] = cb_storage[:acceptances]
+            if haskey(cb_storage, :acceptances)
+                info[:acceptances] = cb_storage[:acceptances]
+            else
+                @debug "Did not find :acceptances in the snapshot state"
+            end
         end
         nothing
     end
@@ -133,7 +173,7 @@ function create_callbacks(trial_id::UUID, device, info=nothing; save_final_snaps
     if save_final_snapshot
         push!(callbacks, FinalisationCallback(take_snapshot))
     end
-    
+
     if length(callbacks) == 0
         return nothing
     elseif length(callbacks) == 1
