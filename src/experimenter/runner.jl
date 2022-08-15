@@ -30,23 +30,27 @@ macro execute(experiment, database, mode=SerialMode, use_progress=false, directo
                 push!(runner.database, trial)
             end
 
+            dir = $(esc(directory))
             if runner.execution_mode == DistributedMode
                 current_environment = dirname(Pkg.project().path)
-                dir = $(esc(directory))
+                @info "Activating environments..."
                 @everywhere using Pkg
-                eval(Meta.parse("@everywhere Pkg.activate(raw\"$(current_environment)\")"))
+                wait.([remotecall(Pkg.activate, i, current_environment) for i in workers()])
                 @everywhere using NNE.Experimenter
                 # Make sure each worker is in the right directory
-                eval(Meta.parse("@everywhere cd(raw\"$(dir)\")"))
+                @info "Switching to '$dir'..."
+                wait.([remotecall(cd, i, dir) for i in workers()])
             end
 
-
+            cd(dir)
             include_file = runner.experiment.include_file
+            include_file_path = joinpath(dir, include_file)
             if !ismissing(include_file)
                 if runner.execution_mode == DistributedMode
-                    eval(Meta.parse("@everywhere include(raw\"$include_file\");"))
+                    includes_calls = [remotecall(include, i, include_file_path) for i in workers()]
+                    wait.(includes_calls)
                 end
-                eval(Meta.parse("include(raw\"$include_file\")";))
+                eval(Meta.parse("include(raw\"$include_file_path\");"))
             end
 
 
@@ -63,56 +67,67 @@ end
 
 function execute_trial_and_save_to_db_async(function_name::AbstractString, trial::Trial)
     (id, results) = execute_trial(function_name, trial)
-    remotecall_wait(complete_trial_in_global_database, 1, (id, results))
+    remotecall_wait(complete_trial_in_global_database, 1, id, results)
     nothing
 end
 
 function set_global_database(db::ExperimentDatabase)
     global global_experiment_database = db
+    lck = ReentrantLock()
+    global global_database_lock = lck
 end
 function unset_global_database()
     global global_experiment_database = nothing
+    global global_database_lock = nothing
 end
 
 function complete_trial_in_global_database(trial_id::UUID, results::Dict{Symbol,Any})
-    global global_experiment_database
+    global global_experiment_database, global_database_lock
 
-    complete_trial!(global_experiment_database, trial_id, results)
-    nothing
+    lock(global_database_lock) do
+        complete_trial!(global_experiment_database, trial_id, results)
+    end
 end
 
 function get_results_from_trial_global_database(trial_id::UUID)
     if myid() != 1
-        return remotecall_fetch(get_results_from_trial_global_database, 1, (trial_id,))
+        return remotecall_fetch(get_results_from_trial_global_database, 1, trial_id)
     end
 
-    global global_experiment_database
-    trial = get_trial(global_experiment_database, trial_id)
+    global global_experiment_database, global_database_lock
 
-    return trial.results
+    lock(global_database_lock) do
+        trial = get_trial(global_experiment_database, trial_id)
+        return trial.results
+    end
 end
 
 function save_snapshot_in_global_database(trial_id::UUID, state::Dict{Symbol,Any}, label=missing)
     # Redirect requests on worker nodes to the main node
     if myid() != 1
-        remotecall_wait(save_snapshot_in_global_database, 1, (trial_id, state, label))
+        remotecall_wait(save_snapshot_in_global_database, 1, trial_id, state, label)
         return nothing
     end
 
-    global global_experiment_database
+    global global_experiment_database, global_database_lock
 
-    save_snapshot!(global_experiment_database, trial_id, state, label)
+    lock(global_database_lock) do
+        save_snapshot!(global_experiment_database, trial_id, state, label)
+    end
     nothing
 end
 
 function get_latest_snapshot_from_global_database(trial_id::UUID)
     # Redirect requests on worker nodes to main node
     if myid() != 1
-        return remotecall_wait(get_latest_snapshot, 1, (trial_id))
+        return remotecall_wait(get_latest_snapshot, 1, trial_id)
     end
 
-    global global_experiment_database
-    return latest_snapshot(global_experiment_database, trial_id)
+    global global_experiment_database, global_database_lock
+
+    lock(global_database_lock) do
+        return latest_snapshot(global_experiment_database, trial_id)
+    end
 end
 
 export get_latest_snapshot_from_global_database, save_snapshot_in_global_database
@@ -129,12 +144,11 @@ function run_trials(runner::Runner, trials::AbstractArray{Trial}; use_progress=f
         runner = SerialMode
     end
     set_global_database(runner.database)
-    if runner == DistributedMode
+    if runner.execution_mode == DistributedMode
         @info "Running $(length(trials)) trials across $(length(workers())) workers"
-        configurations = (x -> x.configuration).(trials)
         function_names = (_ -> runner.experiment.function_name).(trials)
         use_progress && @debug "Progress bar not supported in distributed mode."
-        pmap(execute_trial_and_save_to_db_async, function_names, configurations)
+        pmap(execute_trial_and_save_to_db_async, function_names, trials)
     elseif runner.execution_mode == MultithreadedMode
         @info "Running $(length(trials)) trials across $(Threads.nthreads()) threads"
         Threads.@threads for trial in iter
