@@ -6,7 +6,7 @@ using Dates
 function plot_execution_map(trials)
     df = DataFrame([t for t in trials if t.has_finished])
 
-    trial_indices = df.trial_index
+    worker_ids = (x->x[:worker_id]).(df.results)
     start_times = (x->x[:start_time]).(df.results)
     end_times = (x->x[:end_time]).(df.results)
 
@@ -17,7 +17,7 @@ function plot_execution_map(trials)
     
     rectangle(w, h, x, y) = Shape(x .+ [0,w,w,0], y .+ [0,0,h,h])
     plt = plot(;)
-    for (idx, start_time, end_time) in zip(trial_indices, offset_start_times, offset_end_times)
+    for (idx, start_time, end_time) in zip(worker_ids, offset_start_times, offset_end_times)
         plot!(plt, rectangle(end_time-start_time, 1, start_time, idx))
     end
     plot!(plt; legend=false)
