@@ -9,7 +9,7 @@ Logging.disable_logging(Logging.Info)
 
 function get_test_config()
     return Dict{Symbol,Any}(
-        :n => IterableVariable([3,4,5]),
+        :n => IterableVariable([3, 4, 5]),
         :m => 5,
         :flag => IterableVariable([false, true]),
         :label => "configuration",
@@ -26,10 +26,16 @@ function get_experiment(name, config)
     return experiment
 end
 
+
+file_path = @__FILE__
+directory = dirname(file_path)
+
 @testset "Local running" for mode in (SerialMode, MultithreadedMode)
     database = open_db("runner test"; in_memory=true)
     experiment = get_experiment("serial execution test", get_test_config())
-    @execute experiment database mode
+
+
+    @execute experiment database mode false directory
 
     trials = get_trials_by_name(database, experiment.name)
     @test length(trials) == 6
@@ -45,9 +51,6 @@ end
     ps = addprocs(2)
     database = open_db("runner test"; in_memory=true)
     experiment = get_experiment("distributed execution test", get_test_config())
-
-    file_path = @__FILE__
-    directory = dirname(file_path)
 
     @execute experiment database DistributedMode false directory
 

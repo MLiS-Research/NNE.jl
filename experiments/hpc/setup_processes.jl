@@ -55,14 +55,13 @@ println("Setting up SLURM!")
 # Setup SLURM
 num_tasks = parse(Int, ENV["SLURM_NTASKS"])
 cpus_per_task = parse(Int, ENV["SLURM_CPUS_PER_TASK"])
-ENV["JULIA_NUM_THREADS"] = cpus_per_task
-addprocs(SlurmManager(num_tasks))
+addprocs(SlurmManager(num_tasks); exeflags=["-t$cpus_per_task"])
 
 println("Workers: $(length(workers()))")
 
 if !isnothing(working_dir)
     println("Switching to directory: $working_dir")
-    eval(Meta.parse("@everywhere cd(\"$working_dir\");"))
+    eval(Meta.parse("@everywhere cd(raw\"$working_dir\");"))
 end
 
 if !skip_activate
@@ -74,13 +73,13 @@ end
 if !isnothing(include_file)
     include_file = abspath(include_file)
     println("Including $include_file")
-    eval(Meta.parse("@everywhere include(\"$include_file\");"))
+    eval(Meta.parse("@everywhere include(raw\"$include_file\");"))
 end
 
 if !isnothing(run_file)
     run_file = abspath(run_file)
     println("Running file: $run_file")
-    eval(Meta.parse("include(\"$run_file\");"))
+    eval(Meta.parse("include(raw\"$run_file\");"))
 end
 
 if !isempty(eval_code)

@@ -3,7 +3,9 @@ using Plots
 using Images
 using Flux
 using Statistics
+using DataFrames
 using NNE.MNISTTraining
+using NNE.Experimenter
 include("plotting_style.jl")
 
 function get_examples(digits...)
@@ -55,6 +57,36 @@ function measure_test_accuracy(info_dict; device=cpu, outputs=2)
     labels = labels |> cpu
     accuracies = [Flux.mean(reshape((x -> x[1] - 1).(argmax(m(features) |> cpu, dims=1)), :) .== labels) for m in models]
     return accuracies
+end
+
+function plot_s_vs_loss(trials::AbstractArray{Trial})
+    df = DataFrame(trials)
+    prepare_trials_df!(df)
+    plot_s_vs_loss(df)
+end
+function plot_s_vs_loss(df::DataFrame)
+    trajectory_lengths = sort(collect(Set(df.τ)))
+    plt = plot(;)
+    for t in trajectory_lengths
+        sub_df = df[df.τ .== t, :]
+        s_vals = sort(collect(Set(sub_df.s)))
+        losses = Float64[]
+        for s in s_vals
+            push!(losses, mean(mean(ls) for ls in sub_df[sub_df.s .== s, :losses])/t)
+        end
+        scatter!(plt, s_vals, losses; label="τ=$t")
+    end
+    plot!(plt; xscale=:log10, yscale=:log10)
+    xlabel!(plt, "s")
+    ylabel!(plt, "<L>/τ")
+    return plt
+end
+function prepare_trials_df!(trials_df::DataFrame)
+    insertcols!(trials_df, :losses => (x->x[:observations]).(trials_df.results))
+    insertcols!(trials_df, :acceptances => (x->x[:observations]).(trials_df.results))
+    insertcols!(trials_df, :s => (x->x[:s]).(trials_df.configuration))
+    insertcols!(trials_df, :τ => (x->x[:τ]).(trials_df.configuration))
+    insertcols!(trials_df, :σ => (x->x[:σ]).(trials_df.configuration))
 end
 
 function plot_avg_loss(results, new_plot=true; should_scale_x=false, kwargs...)
