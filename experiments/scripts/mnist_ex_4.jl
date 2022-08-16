@@ -17,7 +17,7 @@ config[:snapshot_label] = "Restoration Snapshot"
 
 experiment = Experiment(
     name="MNIST Restore Experiment 1",
-    include_file="../distributed/mnist_runner.jl",
+    include_file="distributed/mnist_runner.jl",
     function_name="map_params_to_trajectory",
     configuration=config
 )

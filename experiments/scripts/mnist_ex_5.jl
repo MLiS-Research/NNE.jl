@@ -4,7 +4,7 @@ using NNE.Experimenter: @execute
 
 db = open_db("experiments.db", joinpath(pwd(), "results", "large"))
 
-original_experiment = get_experiment_by_name(db, "MNIST Restore Experiment 1")
+original_experiment = get_experiment_by_name(db, "MNIST Worker Overlap 3")
 
 config = original_experiment.configuration
 
@@ -16,8 +16,8 @@ config[:max_perturb_models] = 1
 config[:snapshot_label] = "Restoration Extended Snapshot"
 
 experiment = Experiment(
-    name="MNIST Restore Experiment 2",
-    include_file="../distributed/mnist_runner.jl",
+    name="MNIST Restore Experiment 3",
+    include_file="distributed/mnist_runner.jl",
     function_name="map_params_to_trajectory",
     configuration=config
 )

@@ -20,7 +20,7 @@ config = Dict{Symbol,Any}(
 
 experiment = Experiment(
     name="MNIST Experiment 200k",
-    include_file="../distributed/mnist_runner.jl",
+    include_file="distributed/mnist_runner.jl",
     function_name="map_params_to_trajectory",
     configuration=config
 )
