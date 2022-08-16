@@ -16,8 +16,8 @@ config[:max_perturb_models] = 1
 config[:snapshot_label] = "Restoration Snapshot"
 
 experiment = Experiment(
-    name="MNIST Worker Overlap",
-    include_file="../distributed/mnist_runner.jl",
+    name="MNIST Worker Overlap 3",
+    include_file="distributed/mnist_runner.jl",
     function_name="map_params_to_trajectory",
     configuration=config
 )
