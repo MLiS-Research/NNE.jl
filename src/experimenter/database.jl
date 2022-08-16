@@ -277,3 +277,25 @@ function merge_databases!(primary_db::ExperimentDatabase, secondary_db::Experime
 
     nothing
 end
+
+function export_db(db::ExperimentDatabase, outfile::AbstractString, experiment_names...)
+    export_db = open_db(outfile, dirname(outfile))
+    if isempty(experiment_names)
+        experiments = get_experiments(db)
+    else
+        experiments = (x -> get_experiment_by_name(db, x)).(experiment_names)
+    end
+
+    for experiment in experiments
+        push!(export_db, experiment)
+        for trial in get_trials(db, experiment.id)
+            push!(export_db, trial)
+
+            for snapshot in get_snapshots(db, trial.id)
+                push!(export_db, snapshot)
+            end
+        end
+    end
+
+    return export_db
+end
