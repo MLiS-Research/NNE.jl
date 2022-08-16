@@ -120,14 +120,16 @@ end
 function get_latest_snapshot_from_global_database(trial_id::UUID)
     # Redirect requests on worker nodes to main node
     if myid() != 1
-        return remotecall_wait(get_latest_snapshot, 1, trial_id)
+        return remotecall_fetch(get_latest_snapshot_from_global_database, 1, trial_id)
     end
 
     global global_experiment_database, global_database_lock
 
-    lock(global_database_lock) do
+
+    snapshot = lock(global_database_lock) do
         return latest_snapshot(global_experiment_database, trial_id)
     end
+    return snapshot
 end
 
 export get_latest_snapshot_from_global_database, save_snapshot_in_global_database
