@@ -74,19 +74,19 @@ function create_mnist_sa_problem(n_samples::Int=1000; device=cpu, outputs=10, da
     return SAProblem(obs, θ), info
 end
 
-function create_mnist_trajectory_state_and_loss(τ, σ, n_samples; rng=Random.GLOBAL_RNG, kwargs...)
+function create_mnist_trajectory_state_and_loss(τ, σ, n_samples; kwargs...)
     _, info = create_mnist_sa_problem(n_samples; kwargs...)
     θ = info[:initial_state]
     loss_fn = info[:loss_fn]
-    states = [θ]
-    previous_state = θ
-    for _ = 2:τ
-        next_state = similar(θ)
-        randn!(rng, next_state)
-        next_state .= next_state .* σ .+ previous_state
-        push!(states, next_state)
-        previous_state = next_state
-    end
+    states = [deepcopy(θ) for _ in 1:τ]
+    # previous_state = θ
+    # for _ = 2:τ
+    #     next_state = similar(θ)
+    #     randn!(rng, next_state)
+    #     next_state .= next_state .* σ .+ previous_state
+    #     push!(states, next_state)
+    #     previous_state = next_state
+    # end
 
     function traj_loss_fn(state::AbstractArray{T}) where {T<:AbstractArray}
         return [loss_fn(s) for s in state]
