@@ -25,23 +25,29 @@ function get_experiment(name, config)
     return experiment
 end
 
-@testset "Create and restore snapshots" begin
+file_path = @__FILE__
+directory = dirname(file_path)
+
+@testset "Create and restore snapshots" for mode in (SerialMode, MultithreadedMode, DistributedMode)
+    if mode == DistributedMode
+        ps = addprocs(2)
+    end
     database = open_db("snapshots"; in_memory=true)
     experiment = get_experiment("Snapshot Test", get_test_config())
 
-    @execute experiment database SerialMode
+    @execute experiment database mode false directory
 
     trials = get_trials_by_name(database, experiment.name)
-    @test length(trials)==2
+    @test length(trials) == 2
 
-    original_results = (x-> x.results).(trials)
+    original_results = (x -> x.results).(trials)
 
     # Allow trials to restart
     for trial in trials
         mark_trial_as_incomplete!(database, trial.id)
     end
 
-    @execute experiment database SerialMode
+    @execute experiment database mode false directory
 
     new_trials = get_trials_by_name(database, experiment.name)
 
@@ -53,5 +59,9 @@ end
         @test all(new_losses[1:length(old_losses)] .== old_losses)
         # As well as new losses
         @test length(new_losses) > length(old_losses)
+    end
+
+    if mode == DistributedMode
+        rmprocs(ps)
     end
 end
