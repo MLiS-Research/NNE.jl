@@ -16,6 +16,11 @@ config = Dict{Symbol,Any}(
     :dataset_seed => 46938723,
     :model_seed => 13124,
     :repeat_number => IterableVariable(1:num_repeats),
+    :max_perturb_models => 1,
+    :save_final_snapshot => true,
+    :use_previous_snapshot => true,
+    :snapshot_every_n => 250_000,
+    :snapshot_label => "Full MNIST Long"
 )
 
 experiment = Experiment(
