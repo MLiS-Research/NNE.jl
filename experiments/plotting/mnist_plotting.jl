@@ -1,11 +1,13 @@
 using MLDatasets
 using Plots
+using Plots.PlotMeasures
 using Images
 using Flux
 using Statistics
 using DataFrames
 using NNE.MNISTTraining
 using NNE.Experimenter
+using Base.Iterators
 include("plotting_style.jl")
 
 function get_examples(digits...)
@@ -59,22 +61,30 @@ function measure_test_accuracy(info_dict; device=cpu, outputs=2)
     return accuracies
 end
 
-function plot_s_vs_loss(trials::AbstractArray{Trial})
+function plot_s_vs_loss(trials::AbstractArray{Trial}; kwargs...)
     df = DataFrame(trials)
     prepare_trials_df!(df)
-    plot_s_vs_loss(df)
+    plot_s_vs_loss(df; kwargs...)
 end
-function plot_s_vs_loss(df::DataFrame)
+function plot_s_vs_loss(df::DataFrame; max_loss_samples=typemax(Int))
     trajectory_lengths = sort(collect(Set(df.τ)))
     plt = plot(;)
-    for t in trajectory_lengths
+    marker_shapes = (:circle, :rect, :dtriangle, :utriangle, :diamond)
+    for (i, t) in enumerate(trajectory_lengths)
         sub_df = df[df.τ .== t, :]
         s_vals = sort(collect(Set(sub_df.s)))
         losses = Float64[]
+        errors = Float64[]
         for s in s_vals
-            push!(losses, mean(mean(ls) for ls in sub_df[sub_df.s .== s, :losses])/t)
+            repeat_ls = (x-> length(x) > max_loss_samples ? x[end-max_loss_samples+1:end] : x).(sub_df[sub_df.s .== s, :losses])
+            num_repeats = length(repeat_ls)
+            push!(losses, mean(mean(ls) for ls in repeat_ls)/t)
+            # errors_repeats = [std(ls)/sqrt(length(ls)) for ls in sub_df[sub_df.s .== s, :losses]]
+            # total_error = sqrt(sum(x->x*x, errors_repeats))/num_repeats/t
+            total_error = std(mean(ls) for ls in repeat_ls)/t/sqrt(num_repeats)
+            push!(errors, total_error)
         end
-        scatter!(plt, s_vals, losses; label="τ=$t")
+        scatter!(plt, s_vals, losses; label="τ=$t", yerror=errors, markershape=marker_shapes[(i-1)%length(marker_shapes)+1])
     end
     plot!(plt; xscale=:log10, yscale=:log10)
     xlabel!(plt, "s")
@@ -92,14 +102,37 @@ end
 function plot_avg_loss(results, new_plot=true; should_scale_x=false, kwargs...)
     losses = (x->x[:observations]).(results)
     med_duration = median((x->x[:duration].value).(results)) ./ 1000.0
-    mean_loss = mean(losses)
-    std_loss = std(losses)
+    tau = mean((x->x[:τ]).(results))
+    mean_loss = mean(losses) / tau
+    std_loss = std(losses) / sqrt(length(losses)) / tau
     plot_fn = new_plot ? plot : plot!
     x_scale = should_scale_x ? LinRange(0, med_duration, length(mean_loss)) : 1:length(mean_loss)
     plt = plot_fn(x_scale, mean_loss; ribbon=(std_loss, std_loss), legend=false, kwargs...)
     xlabel!(should_scale_x ? "Runtime (s)" : "Epochs")
     ylabel!("Mean Loss")
     return plt
+end
+
+function plot_avg_loss_compared(trials; max_y_lim=nothing, kwargs...)
+    ts = sort(collect(Set(t.configuration[:τ] for t in trials)))
+    ss = sort(collect(Set(t.configuration[:s] for t in trials)))
+    split_trials = [[tr for tr in trials if tr.configuration[:τ]==t && tr.configuration[:s]==s] for (s, t) in product(ss, ts)]
+
+
+    plts = []
+    for (j, s) in enumerate(ss)
+        plt = nothing
+        for (i, t) in enumerate(ts)
+            plt = plot_avg_loss([trial.results for trial in split_trials[j, i]], (i==1); label="τ=$t", legend=:outerright, kwargs...)
+            title!(plt, "($(Char(96+j)))")
+            if !isnothing(max_y_lim)
+                ylims!(plt, 0, max_y_lim)
+            end
+        end
+        plot!(plt; titlelocation=:left)
+        push!(plts, plt)
+    end
+    return plot(plts...; layout=(length(plts), 1), dpi=300, size=(600, 1200), left_margin = [10mm 0mm])
 end
 
 function conv_1d(y, w=500, sigma=100.0)
@@ -129,6 +162,6 @@ function plot_acceptance(results, new_plot=true; should_scale_x=false, kwargs...
     x_scale = should_scale_x ? LinRange(0, med_duration, length(mean_acceptances)) : 1:length(mean_acceptances)
     plt = plot_fn(x_scale, mean_acceptances; ribbon=(std_acceptances, std_acceptances), legend=false, kwargs...)
     xlabel!(should_scale_x ? "Runtime (s)" : "Epochs")
-    ylabel!("Mean Loss")
+    ylabel!("Mean Acceptance")
     return plt
 end
