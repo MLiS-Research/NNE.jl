@@ -66,7 +66,7 @@ function plot_s_vs_loss(trials::AbstractArray{Trial}; kwargs...)
     prepare_trials_df!(df)
     plot_s_vs_loss(df; kwargs...)
 end
-function plot_s_vs_loss(df::DataFrame; max_loss_samples=typemax(Int))
+function plot_s_vs_loss(df::DataFrame; max_loss_samples=typemax(Int), kwargs...)
     trajectory_lengths = sort(collect(Set(df.τ)))
     plt = plot(;)
     marker_shapes = (:circle, :rect, :dtriangle, :utriangle, :diamond)
@@ -84,16 +84,44 @@ function plot_s_vs_loss(df::DataFrame; max_loss_samples=typemax(Int))
             total_error = std(mean(ls) for ls in repeat_ls)/t/sqrt(num_repeats)
             push!(errors, total_error)
         end
-        scatter!(plt, s_vals, losses; label="τ=$t", yerror=errors, markershape=marker_shapes[(i-1)%length(marker_shapes)+1])
+        scatter!(plt, s_vals, losses; label="τ=$t", yerror=errors, markershape=marker_shapes[(i-1)%length(marker_shapes)+1], kwargs...)
     end
     plot!(plt; xscale=:log10, yscale=:log10)
     xlabel!(plt, "s")
     ylabel!(plt, "<L>/τ")
     return plt
 end
+function plot_s_vs_acceptance(trials::AbstractArray{Trial}; kwargs...)
+    df = DataFrame(trials)
+    prepare_trials_df!(df)
+    plot_s_vs_acceptance(df; kwargs...)
+end
+function plot_s_vs_acceptance(df::DataFrame; max_acceptance_samples=typemax(Int), kwargs...)
+    trajectory_lengths = sort(collect(Set(df.τ)))
+    plt = plot(;)
+    marker_shapes = (:circle, :rect, :dtriangle, :utriangle, :diamond)
+    for (i, t) in enumerate(trajectory_lengths)
+        sub_df = df[df.τ .== t, :]
+        s_vals = sort(collect(Set(sub_df.s)))
+        acceptances = Float64[]
+        errors = Float64[]
+        for s in s_vals
+            repeat_accepts = (x-> length(x) > max_acceptance_samples ? x[end-max_acceptance_samples+1:end] : x).(sub_df[sub_df.s .== s, :acceptances])
+            num_repeats = length(repeat_accepts)
+            push!(acceptances, mean(mean(as) for as in repeat_accepts))
+            total_error = std(mean(as) for as in repeat_accepts)/sqrt(num_repeats)
+            push!(errors, total_error)
+        end
+        scatter!(plt, s_vals, acceptances; label="τ=$t", yerror=errors, markershape=marker_shapes[(i-1)%length(marker_shapes)+1], kwargs...)
+    end
+    plot!(plt; xscale=:log10, yscale=:log10)
+    xlabel!(plt, "s")
+    ylabel!(plt, "<A>")
+    return plt
+end
 function prepare_trials_df!(trials_df::DataFrame)
     insertcols!(trials_df, :losses => (x->x[:observations]).(trials_df.results))
-    insertcols!(trials_df, :acceptances => (x->x[:observations]).(trials_df.results))
+    insertcols!(trials_df, :acceptances => (x->Float64.(diff(x[:observations]).==0)).(trials_df.results))
     insertcols!(trials_df, :s => (x->x[:s]).(trials_df.configuration))
     insertcols!(trials_df, :τ => (x->x[:τ]).(trials_df.configuration))
     insertcols!(trials_df, :σ => (x->x[:σ]).(trials_df.configuration))
@@ -107,7 +135,14 @@ function plot_avg_loss(results, new_plot=true; should_scale_x=false, kwargs...)
     std_loss = std(losses) / sqrt(length(losses)) / tau
     plot_fn = new_plot ? plot : plot!
     x_scale = should_scale_x ? LinRange(0, med_duration, length(mean_loss)) : 1:length(mean_loss)
-    plt = plot_fn(x_scale, mean_loss; ribbon=(std_loss, std_loss), legend=false, kwargs...)
+    plt = nothing
+    if length(mean_loss) > 5e5
+        mean_loss = conv_1d(mean_loss, 5000, 1000.0)
+        std_loss = conv_1d(std_loss, 5000, 1000.0)
+        plt = @views plot_fn(x_scale[begin:100:end], mean_loss[begin:100:end]; ribbon=(std_loss[begin:100:end], std_loss[begin:100:end]), legend=false, kwargs...)
+    else
+        plt = plot_fn(x_scale, mean_loss; ribbon=(std_loss, std_loss), legend=false, kwargs...)
+    end
     xlabel!(should_scale_x ? "Runtime (s)" : "Epochs")
     ylabel!("Mean Loss")
     return plt
