@@ -128,7 +128,8 @@ function prepare_trials_df!(trials_df::DataFrame)
 end
 
 function plot_avg_loss(results, new_plot=true; should_scale_x=false, kwargs...)
-    losses = (x->x[:observations]).(results)
+    max_len = minimum([length(x[:observations]) for x in results])
+    losses = (x->x[:observations][1:max_len]).(results)
     med_duration = median((x->x[:duration].value).(results)) ./ 1000.0
     tau = mean((x->x[:τ]).(results))
     mean_loss = mean(losses) / tau
