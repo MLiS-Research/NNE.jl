@@ -1,7 +1,9 @@
 using NNE
 using NNE.Experimenter
 using NNE.Experimenter: @execute
+using Logging
 
+should_extend = true
 num_repeats = 1
 
 config = Dict{Symbol,Any}(
@@ -31,5 +33,13 @@ experiment = Experiment(
 )
 
 db = open_db("experiments_new.db", joinpath(pwd(), "results", "large"))
+
+experiment = restore_from_db(db, experiment)
+if should_extend
+    @info "Extending trials"
+    for trial in experiment
+        mark_trial_as_incomplete!(db, trial.id);
+    end
+end
 
 @execute experiment db DistributedMode
