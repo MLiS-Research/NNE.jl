@@ -8,6 +8,7 @@ using DataFrames
 using NNE.MNISTTraining
 using NNE.Experimenter
 using Base.Iterators
+using BSON: @save, @load
 include("plotting_style.jl")
 
 function get_examples(digits...)
@@ -177,8 +178,8 @@ function plot_avg_loss(results, new_plot=true; should_scale_x=false, kwargs...)
 end
 
 function plot_avg_loss_compared(trials; max_y_lim=nothing, kwargs...)
-    ts = sort(collect(Set(t.configuration[:τ] for t in trials)))
-    ss = sort(collect(Set(t.configuration[:s] for t in trials)))
+    ts = sort(collect(Set(x.configuration[:τ] for x in trials)))
+    ss = sort(collect(Set(x.configuration[:s] for x in trials)))
     split_trials = [[tr for tr in trials if tr.configuration[:τ]==t && tr.configuration[:s]==s] for (s, t) in product(ss, ts)]
 
 
@@ -227,4 +228,109 @@ function plot_acceptance(results, new_plot=true; should_scale_x=false, kwargs...
     xlabel!(should_scale_x ? "Runtime (s)" : "Epochs")
     ylabel!("Mean Acceptance")
     return plt
+end
+
+
+function prepare_mnist_results(trials::AbstractArray{Trial}; max_loss_samples=typemax(Int), device=gpu, outputs=10, kwargs...)
+    trajectory_lengths = sort(collect(Set([x.configuration[:τ] for x in trials])))
+
+    results = Dict{Symbol, Any}()
+    results[:trajectory_lengths] = trajectory_lengths
+    results[:data] = Dict{Int, Any}()
+
+    for (i, t) in enumerate(trajectory_lengths)
+        s_vals = sort(collect(Set([x.configuration[:s] for x in trials if x.configuration[:τ]==t])))
+
+        t_data = Dict{Float64, Any}()
+        for (j, s) in enumerate(s_vals)
+            s_data = Dict{Symbol, Any}()
+            loss_arrays = [x.results[:observations] for x in trials if x.configuration[:τ]==t && x.configuration[:s] == s]
+            repeat_ls = (x-> length(x) > max_loss_samples ? x[end-max_loss_samples+1:end] : x).(loss_arrays)
+            num_repeats = length(repeat_ls)
+            s_data[:loss] = mean(mean(ls) for ls in repeat_ls)/t
+            errors_repeats = [std(ls)/sqrt(length(ls)) for ls in loss_arrays]
+            total_error = sqrt(sum(x->x*x, errors_repeats))/num_repeats/t
+            s_data[:loss_error] = total_error
+
+            
+            results_list = [x.results for x in trials if x.results[:τ] == t && x.results[:s] == s]
+            repeat_accs = measure_train_accuracy.(results_list; device, outputs)
+            num_repeats = length(repeat_accs)
+            s_data[:accuracy] = mean(mean(as) for as in repeat_accs)
+            s_data[:accuracy_error] = std(mean(as) for as in repeat_accs)/sqrt(num_repeats)
+            s_data[:s] = s
+            t_data[s] = s_data
+        end
+        results[:data][t] = t_data
+    end
+
+    @save get_mnist_results_save_path() results
+    nothing
+end
+
+get_mnist_results_save_path() = joinpath("results", "mnist_data.bson")
+get_mnist_results_figure_s_save_path() = joinpath("figures", "full_mnist_s_ensemble.pdf")
+get_mnist_results_figure_accuracy_save_path() = joinpath("figures", "full_mnist_accuracy.pdf")
+
+function get_mnist_results()
+    results = nothing
+    @load get_mnist_results_save_path() results
+    return results
+end
+
+function plot_mnist_s_graph()
+    results = get_mnist_results()
+
+    t_values = sort(results[:trajectory_lengths])
+    s_values = sort(collect(Set(vcat([collect(keys(d)) for d in values(results[:data])]...))))
+
+    losses = zeros(Float64, length(s_values), length(t_values))
+    errors = similar(losses)
+    for (i, (s, t)) in enumerate(Base.product(s_values, t_values))
+        losses[i] = results[:data][t][s][:loss]
+        errors[i] = results[:data][t][s][:loss_error]
+    end
+
+    marker_shapes = (:circle, :rect, :dtriangle, :utriangle, :diamond, :star5)
+    wrapped_shapes = reshape([marker_shapes[(i-1)%length(marker_shapes)+1] for i in 1:length(t_values)], 1, :)
+    plt = plot_s_graph(s_values, t_values, losses; linecolor=nothing, markershape=wrapped_shapes, legend=:bottomleft)
+
+    return plt
+end
+
+function plot_mnist_accuracy_graph()
+    results = get_mnist_results()
+
+    t_values = sort(results[:trajectory_lengths])
+    s_values = sort(collect(Set(vcat([collect(keys(d)) for d in values(results[:data])]...))))
+
+    accuracies = zeros(Float64, length(s_values), length(t_values))
+    accuracy_errors = similar(accuracies)
+    for (i, (s, t)) in enumerate(Base.product(s_values, t_values))
+        accuracies[i] = results[:data][t][s][:accuracy] * 100
+        accuracy_errors[i] = results[:data][t][s][:accuracy_error] * 100
+    end
+
+    marker_shapes = (:circle, :rect, :dtriangle, :utriangle, :diamond, :star5)
+    wrapped_shapes = reshape([marker_shapes[(i-1)%length(marker_shapes)+1] for i in 1:length(t_values)], 1, :)
+    plt = plot_s_graph(s_values, t_values, accuracies; linecolor=nothing, markershape=wrapped_shapes, legend=:right, yerr=accuracy_errors)
+    ylabel!(plt, "Accuracy (%)")
+    ylims!(plt, 8, 100)
+    return plt
+end
+
+
+function plot_and_save_mnist_s_graph()
+    plt = plot_mnist_s_graph()
+
+    savefig(plt, get_mnist_results_figure_s_save_path())
+    nothing
+end
+
+
+function plot_and_save_mnist_accuracy_graph()
+    plt = plot_mnist_accuracy_graph()
+
+    savefig(plt, get_mnist_results_figure_accuracy_save_path())
+    nothing
 end
