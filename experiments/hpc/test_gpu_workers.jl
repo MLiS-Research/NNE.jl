@@ -27,5 +27,6 @@ function print_resources()
     print_slurm_key!(io, "SLURM_JOB_ID")
     print_slurm_key!(io, "SLURM_JOB_NODELIST")
     print_slurm_key!(io, "SLURM_TASK_PID")
+    println(io, "PID: $(getpid())")
     return String(take!(io))
 end

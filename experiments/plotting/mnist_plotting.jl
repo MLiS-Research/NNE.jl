@@ -1,11 +1,13 @@
 using MLDatasets
 using Plots
+using Plots.PlotMeasures
 using Images
 using Flux
 using Statistics
 using DataFrames
 using NNE.MNISTTraining
 using NNE.Experimenter
+using Base.Iterators
 include("plotting_style.jl")
 
 function get_examples(digits...)
@@ -59,47 +61,141 @@ function measure_test_accuracy(info_dict; device=cpu, outputs=2)
     return accuracies
 end
 
-function plot_s_vs_loss(trials::AbstractArray{Trial})
+function plot_s_vs_loss(trials::AbstractArray{Trial}; kwargs...)
     df = DataFrame(trials)
     prepare_trials_df!(df)
-    plot_s_vs_loss(df)
+    plot_s_vs_loss(df; kwargs...)
 end
-function plot_s_vs_loss(df::DataFrame)
+function plot_s_vs_loss(df::DataFrame; max_loss_samples=typemax(Int), kwargs...)
     trajectory_lengths = sort(collect(Set(df.τ)))
-    plt = plot(;)
-    for t in trajectory_lengths
+    defaults = get_plot_defaults();
+    plt = plot(; )
+    marker_shapes = (:circle, :rect, :dtriangle, :utriangle, :diamond, :pentagon)
+    for (i, t) in enumerate(trajectory_lengths)
         sub_df = df[df.τ .== t, :]
         s_vals = sort(collect(Set(sub_df.s)))
         losses = Float64[]
+        errors = Float64[]
         for s in s_vals
-            push!(losses, mean(mean(ls) for ls in sub_df[sub_df.s .== s, :losses])/t)
+            repeat_ls = (x-> length(x) > max_loss_samples ? x[end-max_loss_samples+1:end] : x).(sub_df[sub_df.s .== s, :losses])
+            num_repeats = length(repeat_ls)
+            push!(losses, mean(mean(ls) for ls in repeat_ls)/t)
+            # errors_repeats = [std(ls)/sqrt(length(ls)) for ls in sub_df[sub_df.s .== s, :losses]]
+            # total_error = sqrt(sum(x->x*x, errors_repeats))/num_repeats/t
+            total_error = std(mean(ls) for ls in repeat_ls)/t/sqrt(num_repeats)
+            push!(errors, total_error)
         end
-        scatter!(plt, s_vals, losses; label="τ=$t")
+        scatter!(plt, s_vals, losses; label="τ=$t", defaults..., yerror=errors, markershape=marker_shapes[(i-1)%length(marker_shapes)+1], kwargs...)
     end
-    plot!(plt; xscale=:log10, yscale=:log10)
+    plot!(plt; xscale=:log10, yscale=:log10, legend=:bottomleft, defaults...)
     xlabel!(plt, "s")
     ylabel!(plt, "<L>/τ")
     return plt
 end
+function plot_accuracy_vs_loss(trials::AbstractArray{Trial}; device=gpu, outputs=10, kwargs...)
+    df = DataFrame(trials)
+    prepare_trials_df!(df)
+    trajectory_lengths = sort(collect(Set(df.τ)))
+    defaults = get_plot_defaults();
+    plt = plot(; )
+    marker_shapes = (:circle, :rect, :dtriangle, :utriangle, :diamond, :pentagon)
+    for (i, t) in enumerate(trajectory_lengths)
+        sub_df = df[df.τ .== t, :]
+        s_vals = sort(collect(Set(sub_df.s)))
+        accuracies = Float64[]
+        errors = Float64[]
+        for s in s_vals
+            results_list = [x.results for x in trials if x.results[:τ] == t && x.results[:s] == s]
+            repeat_accs = measure_train_accuracy.(results_list; device, outputs)
+            num_repeats = length(repeat_accs)
+            push!(accuracies, mean(mean(as) for as in repeat_accs))
+            push!(errors, std(mean(as) for as in repeat_accs)/sqrt(num_repeats))
+        end
+        scatter!(plt, s_vals, accuracies .* 100; label="τ=$t", defaults..., yerror=errors, markershape=marker_shapes[(i-1)%length(marker_shapes)+1], kwargs...)
+    end
+    plot!(plt; xscale=:log10, yscale=:log10, legend=:topleft, ylims=(8, 100), defaults...)
+    xlabel!(plt, "s")
+    ylabel!(plt, "Train Accuracy (%)")
+    return plt
+end
+function plot_s_vs_acceptance(trials::AbstractArray{Trial}; kwargs...)
+    df = DataFrame(trials)
+    prepare_trials_df!(df)
+    plot_s_vs_acceptance(df; kwargs...)
+end
+function plot_s_vs_acceptance(df::DataFrame; max_acceptance_samples=typemax(Int), kwargs...)
+    trajectory_lengths = sort(collect(Set(df.τ)))
+    plt = plot(;)
+    marker_shapes = (:circle, :rect, :dtriangle, :utriangle, :diamond)
+    for (i, t) in enumerate(trajectory_lengths)
+        sub_df = df[df.τ .== t, :]
+        s_vals = sort(collect(Set(sub_df.s)))
+        acceptances = Float64[]
+        errors = Float64[]
+        for s in s_vals
+            repeat_accepts = (x-> length(x) > max_acceptance_samples ? x[end-max_acceptance_samples+1:end] : x).(sub_df[sub_df.s .== s, :acceptances])
+            num_repeats = length(repeat_accepts)
+            push!(acceptances, mean(mean(as) for as in repeat_accepts))
+            total_error = std(mean(as) for as in repeat_accepts)/sqrt(num_repeats)
+            push!(errors, total_error)
+        end
+        scatter!(plt, s_vals, acceptances; label="τ=$t", yerror=errors, markershape=marker_shapes[(i-1)%length(marker_shapes)+1], kwargs...)
+    end
+    plot!(plt; xscale=:log10, yscale=:log10)
+    xlabel!(plt, "s")
+    ylabel!(plt, "<A>")
+    return plt
+end
 function prepare_trials_df!(trials_df::DataFrame)
     insertcols!(trials_df, :losses => (x->x[:observations]).(trials_df.results))
-    insertcols!(trials_df, :acceptances => (x->x[:observations]).(trials_df.results))
+    insertcols!(trials_df, :acceptances => (x->Float64.(diff(x[:observations]).==0)).(trials_df.results))
     insertcols!(trials_df, :s => (x->x[:s]).(trials_df.configuration))
     insertcols!(trials_df, :τ => (x->x[:τ]).(trials_df.configuration))
     insertcols!(trials_df, :σ => (x->x[:σ]).(trials_df.configuration))
 end
 
 function plot_avg_loss(results, new_plot=true; should_scale_x=false, kwargs...)
-    losses = (x->x[:observations]).(results)
+    max_len = minimum([length(x[:observations]) for x in results])
+    losses = (x->x[:observations][1:max_len]).(results)
     med_duration = median((x->x[:duration].value).(results)) ./ 1000.0
-    mean_loss = mean(losses)
-    std_loss = std(losses)
+    tau = mean((x->x[:τ]).(results))
+    mean_loss = mean(losses) / tau
+    std_loss = std(losses) / sqrt(length(losses)) / tau
     plot_fn = new_plot ? plot : plot!
     x_scale = should_scale_x ? LinRange(0, med_duration, length(mean_loss)) : 1:length(mean_loss)
-    plt = plot_fn(x_scale, mean_loss; ribbon=(std_loss, std_loss), legend=false, kwargs...)
+    plt = nothing
+    if length(mean_loss) > 5e5
+        mean_loss = conv_1d(mean_loss, 5000, 1000.0)
+        std_loss = conv_1d(std_loss, 5000, 1000.0)
+        plt = @views plot_fn(x_scale[begin:100:end], mean_loss[begin:100:end]; ribbon=(std_loss[begin:100:end], std_loss[begin:100:end]), legend=false, kwargs...)
+    else
+        plt = plot_fn(x_scale, mean_loss; ribbon=(std_loss, std_loss), legend=false, kwargs...)
+    end
     xlabel!(should_scale_x ? "Runtime (s)" : "Epochs")
     ylabel!("Mean Loss")
     return plt
+end
+
+function plot_avg_loss_compared(trials; max_y_lim=nothing, kwargs...)
+    ts = sort(collect(Set(t.configuration[:τ] for t in trials)))
+    ss = sort(collect(Set(t.configuration[:s] for t in trials)))
+    split_trials = [[tr for tr in trials if tr.configuration[:τ]==t && tr.configuration[:s]==s] for (s, t) in product(ss, ts)]
+
+
+    plts = []
+    for (j, s) in enumerate(ss)
+        plt = nothing
+        for (i, t) in enumerate(ts)
+            plt = plot_avg_loss([trial.results for trial in split_trials[j, i]], (i==1); label="τ=$t", legend=:outerright, kwargs...)
+            title!(plt, "($(Char(96+j)))")
+            if !isnothing(max_y_lim)
+                ylims!(plt, 0, max_y_lim)
+            end
+        end
+        plot!(plt; titlelocation=:left)
+        push!(plts, plt)
+    end
+    return plot(plts...; layout=(length(plts), 1), dpi=300, size=(600, 1200), left_margin = [10mm 0mm])
 end
 
 function conv_1d(y, w=500, sigma=100.0)
@@ -129,6 +225,6 @@ function plot_acceptance(results, new_plot=true; should_scale_x=false, kwargs...
     x_scale = should_scale_x ? LinRange(0, med_duration, length(mean_acceptances)) : 1:length(mean_acceptances)
     plt = plot_fn(x_scale, mean_acceptances; ribbon=(std_acceptances, std_acceptances), legend=false, kwargs...)
     xlabel!(should_scale_x ? "Runtime (s)" : "Epochs")
-    ylabel!("Mean Loss")
+    ylabel!("Mean Acceptance")
     return plt
 end

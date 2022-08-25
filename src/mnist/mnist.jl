@@ -8,6 +8,7 @@ using TPS.SimulatedAnnealing
 using TPS.DiscreteTrajectory
 using TPS.Convergence
 using TPS.Callbacks
+using TPS.Annealing
 using Random
 using ProgressBars
 using Plots
@@ -74,19 +75,19 @@ function create_mnist_sa_problem(n_samples::Int=1000; device=cpu, outputs=10, da
     return SAProblem(obs, θ), info
 end
 
-function create_mnist_trajectory_state_and_loss(τ, σ, n_samples; rng=Random.GLOBAL_RNG, kwargs...)
+function create_mnist_trajectory_state_and_loss(τ, σ, n_samples; kwargs...)
     _, info = create_mnist_sa_problem(n_samples; kwargs...)
     θ = info[:initial_state]
     loss_fn = info[:loss_fn]
-    states = [θ]
-    previous_state = θ
-    for _ = 2:τ
-        next_state = similar(θ)
-        randn!(rng, next_state)
-        next_state .= next_state .* σ .+ previous_state
-        push!(states, next_state)
-        previous_state = next_state
-    end
+    states = [deepcopy(θ) for _ in 1:τ]
+    # previous_state = θ
+    # for _ = 2:τ
+    #     next_state = similar(θ)
+    #     randn!(rng, next_state)
+    #     next_state .= next_state .* σ .+ previous_state
+    #     push!(states, next_state)
+    #     previous_state = next_state
+    # end
 
     function traj_loss_fn(state::AbstractArray{T}) where {T<:AbstractArray}
         return [loss_fn(s) for s in state]
@@ -104,13 +105,36 @@ function create_mnist_trajectory_state_and_loss(τ, σ, n_samples; rng=Random.GL
     return problem, info
 end
 
-
-
-function solve_mnist_sa(; s=500.0, σ=0.001, epochs=100000, n_samples=4096, fraction_to_include=1.0, device=cpu, outputs=2, show_progress=false, trial_id=nothing, restore_from_complete_trial_id=nothing, kwargs...)
+struct SAnnealParameters{T}
+    start_s::T
+    target_s::T
+    decay_epochs::Integer
+end
+SAnnealParameters(start_s, target_s, decay_epochs) = SAnnealParameters(promote(start_s, target_s)..., decay_epochs)
+wrap_algorithm(alg, ::Nothing) = alg
+wrap_algorithm(alg, s_anneal_params::SAnnealParameters) = LinearDecayAnnealedAlgorithm(alg, s_anneal_params.start_s, s_anneal_params.target_s, s_anneal_params.decay_epochs, :s)
+function solve_mnist_sa(;
+    s=500.0,
+    σ=0.001,
+    epochs=100000,
+    n_samples=4096,
+    fraction_to_include=1.0,
+    device=cpu,
+    outputs=2,
+    show_progress=false,
+    trial_id=nothing,
+    restore_from_complete_trial_id=nothing,
+    start_s=nothing,
+    annealing_epochs=nothing,
+    kwargs...
+)
     problem, info = create_mnist_sa_problem(n_samples; device, outputs)
     restore_state!(problem, restore_from_complete_trial_id; device)
     cb = create_callbacks(trial_id, device, info; kwargs...)
     alg = TPS.MetropolisHastings.gaussian_sa_algorithm(s, σ; params_changed_frac=fraction_to_include)
+    if !isnothing(start_s) && !isnothing(annealing_epochs)
+        alg = wrap_algorithm(alg, SAnnealParameters(start_s, s, annealing_epochs))
+    end
     iter = show_progress ? ProgressBar(1:epochs) : epochs
     solution = solve(problem, alg, iter; cb=cb)
     info[:solution] = solution
@@ -124,13 +148,32 @@ function solve_mnist_sa(; s=500.0, σ=0.001, epochs=100000, n_samples=4096, frac
     return info
 end
 
-function solve_mnist_trajectory(; τ=4, s=50.0, σ=0.001, epochs=10000, n_samples=2048, device=cpu, outputs=2, show_progress=false, fraction_to_include=1.0, max_perturb_models=nothing, trial_id=nothing, restore_from_complete_trial_id=nothing, kwargs...)
+function solve_mnist_trajectory(;
+    τ=4,
+    s=50.0,
+    σ=0.001,
+    epochs=10000,
+    n_samples=2048,
+    device=cpu,
+    outputs=2,
+    show_progress=false,
+    fraction_to_include=1.0,
+    max_perturb_models=nothing,
+    trial_id=nothing,
+    restore_from_complete_trial_id=nothing,
+    start_s=nothing,
+    annealing_epochs=nothing,
+    kwargs...
+)
     problem, info = create_mnist_trajectory_state_and_loss(τ, σ, n_samples; device, outputs)
     restore_state!(problem, restore_from_complete_trial_id; device)
     if τ > 2
         alg = gaussian_trajectory_algorithm(s, σ; params_changed_frac=fraction_to_include, max_width=max_perturb_models, chance_to_shoot=(2 / τ))
     else
         alg = gaussian_trajectory_algorithm(s, σ; params_changed_frac=fraction_to_include, max_width=max_perturb_models)
+    end
+    if !isnothing(start_s) && !isnothing(annealing_epochs)
+        alg = wrap_algorithm(alg, SAnnealParameters(start_s, s, annealing_epochs))
     end
     iter = show_progress ? ProgressBar(1:epochs) : epochs
     cb = create_callbacks(trial_id, device, info; kwargs...)

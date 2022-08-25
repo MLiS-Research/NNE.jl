@@ -11,19 +11,19 @@ function load_tps_linear_data()
     s_values = nothing
     t_values = nothing
     σ = nothing
-    results = nothing
     losses = nothing
-    @load "experiments/results/large/tps_linear_perceptron.bson" s_values t_values σ results losses
-    return s_values, t_values, σ, results, losses
+    @load "results/large/tps_linear_perceptron.bson" s_values t_values σ losses
+    return s_values, t_values, σ, losses
 end
 
 function process_tps_linear_data_and_save()
-    s_values, t_values, σ, results, losses = load_tps_linear_data()
+    s_values, t_values, σ, losses = load_tps_linear_data()
     times_arr = hcat(repeat(t_values', length(s_values)))
-    get_last_n_losses(solution, n) = mean(solution.observations[(end-n):end])
-    losses = (x->get_last_n_losses(x, 50000)).(results) ./ times_arr
+    get_last_n_losses(losses, n) = mean(losses[(end-n):end])
+    losses = (x->get_last_n_losses(x, Int(round(0.75*length(x))))).(losses) ./ times_arr
+    losses = reshape(losses, length(s_values), length(t_values))
 
-    @save "experiments/results/tps_linear_reduced_data.bson" s_values t_values σ losses
+    @save "results/tps_linear_reduced_data.bson" s_values t_values σ losses
     nothing
 end
 
@@ -32,7 +32,7 @@ function load_processed_tps_data()
     t_values = nothing
     σ = nothing
     losses = nothing
-    @load "experiments/results/tps_linear_reduced_data.bson" s_values t_values σ losses
+    @load "results/tps_linear_reduced_data.bson" s_values t_values σ losses
     return s_values, t_values, σ, losses
 end
 
@@ -44,20 +44,19 @@ function construct_tps_data_loss_vs_s_plot()
     s_values, t_values, _, losses = load_processed_tps_data()
     max_s = maximum(s_values)
     plt = construct_exact_linear_data_loss_vs_s_plot(;max_s=max_s)
-    markers = [:utriangle :rect :dtriangle :circle]
+    markers = [:ltriangle :diamond :rect :dtriangle :circle]
     plt = plot_s_graph(s_values, t_values, losses; 
         new_plot=false,
         markershape=markers,
-        linecolor=nothing,
-        legend_column=2
+        linecolor=nothing
     )
-    labels = [a.plotattributes[:label] for a in plt.subplots[begin].series_list]
-    plot!(plt, label=reshape(labels, 2, :))
+    # labels = [a.plotattributes[:label] for a in plt.subplots[begin].series_list]
+    # plot!(plt, label=reshape(labels, 2, :))
     return plt
 end
 
 function plot_tps_linear_figure()
     plt = construct_tps_data_loss_vs_s_plot()
-    savefig(plt, "experiments/figures/tps_linear_perceptron.pdf")
+    savefig(plt, "figures/tps_linear_perceptron.pdf")
     return plt
 end

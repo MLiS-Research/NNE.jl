@@ -13,4 +13,4 @@ problem = construct_problem()
 
 losses = map(x->get_mean_time_integrated_loss(x..., sigma, problem), product(s_values, t_values))
 
-@save "experiments/results/exact_linear_perceptron.bson" s_values t_values sigma problem losses
+@save "results/exact_linear_perceptron.bson" s_values t_values sigma problem losses

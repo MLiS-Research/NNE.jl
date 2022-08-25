@@ -32,4 +32,9 @@ experiment = Experiment(
 
 db = open_db("experiments.db", joinpath(pwd(), "results", "large"))
 
+# Reset all of the trials
+for trial in get_trials_by_name(db, experiment.name)
+    mark_trial_as_incomplete!(db, trial.id);
+end
+
 @execute experiment db DistributedMode
