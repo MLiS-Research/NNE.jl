@@ -14,46 +14,61 @@ function generate_single_parameter_problem(τ, σ; rng=Random.GLOBAL_RNG)
     return states
 end
 
-function plot_parameter_trajectory(states; new_plot=true, kwargs...)
+function plot_parameter_trajectory(states; indices=(1:length(states)), new_plot=true, kwargs...)
     plot_fn = new_plot ? plot : plot!
-    plt = plot_fn(0:length(states)-1, [s[begin] for s in states], legend=false; kwargs...)
+    plt = plot_fn(indices, [s[begin] for s in states], legend=false; alpha=1.0, kwargs...)
     xlabel!(L"t")
     ylabel!(L"\theta")
     return plt
 end
 
-function generate_perturbations(states, σ; rng=Random.GLOBAL_RNG)
-    forwards_perturbation = TPS.MetropolisHastings.shoot_perturbation(states, 6, σ, true; rng=rng)
-    backwards_perturbation = TPS.MetropolisHastings.shoot_perturbation(states, 4, σ, false; rng=rng)
-    bridge_perturbation = TPS.MetropolisHastings.bridge_perturbation(states, 3, 7, σ; rng=rng)
+function generate_perturbations(states, σ)
+    # Generate initial state
+    loss_fn(x::AbstractArray) = 0.0
+    loss_fn(x::AbstractArray{T}) where {T<:AbstractArray} = [loss_fn(y) for y in x]
+    cache = TPS.generate_cache(TPS.MetropolisHastings.gaussian_trajectory_algorithm(0.0, σ), TPS.DiscreteTrajectory.DTProblem(TPS.SimpleObservable(loss_fn), states))
 
-    perturbations = Dict{Symbol, Any}(:forwards=>forwards_perturbation, :backwards=>backwards_perturbation, :bridge=>bridge_perturbation)
-    return perturbations
+    # Shooting forwards
+    TPS.MetropolisHastings.shoot!(cache, states, 6, σ, true)
+    forwards_state = deepcopy(cache)
+
+    # Shooting backwards
+    TPS.MetropolisHastings.shoot!(cache, states, 4, σ, false)
+    backwards_state = deepcopy(cache)
+
+    # Bridging
+    TPS.MetropolisHastings.bridge!(cache, states, 3, 7, σ)
+    bridge_end = deepcopy(cache)
+
+    perturbed_states = Dict{Symbol, Any}(:forwards=>forwards_state, :backwards=>backwards_state, :bridge=>bridge_end)
+    return perturbed_states
 end
 
-function main_plot(seed=1234)
-    rng = Random.MersenneTwister(seed)
+function main_plot(seed=21; border=0.025)
     σ=1.0
     τ=10
-    states = generate_single_parameter_problem(τ, σ; rng=rng)
-    perturbations = generate_perturbations(states, σ; rng=rng)
-    function get_trajectory(p)
-        changes, indices = p
-        new_trajectory = deepcopy(states)
-        new_trajectory[indices] .+= changes
-        return new_trajectory
-    end
+    Random.seed!(seed)
+    states = generate_single_parameter_problem(τ, σ)
+    perturbed_states = generate_perturbations(states, σ)
 
     plots = Dict{Symbol, Any}()
-    for (key, value) in perturbations
-        plt = plot_parameter_trajectory(states, label=L"\omega", markershape=:utriangle)
-        traj = get_trajectory(value)
-        plot_parameter_trajectory(traj; new_plot=false, label=L"\omega'", markershape=:circle)
+    minimum_value = minimum(first, states)
+    maximum_value = maximum(first, states)
+    for (key, cache) in perturbed_states
+        plt = plot_parameter_trajectory(states; label=L"\omega", markershape=:circle)
+        new_state = deepcopy(states)
+        TPS.MetropolisHastings.apply!(new_state, cache)
+        maximum_value = max(maximum_value, maximum(first, new_state))
+        minimum_value = min(minimum_value, minimum(first, new_state))
+        plot_parameter_trajectory(new_state; new_plot=false, label=L"\omega'", markershape=:utriangle, linestyle=:dash)
         
         plot!(;yticks=false, xticks=false, legend=:topleft)
 
         plots[key] = plt
     end
+
+    range_vals = maximum_value-minimum_value
+    ylims!(minimum_value-border*range_vals, maximum_value+border*range_vals)
 
     layout = @layout [a b c]
 
@@ -61,6 +76,6 @@ function main_plot(seed=1234)
 
     plt = plot(plots[:backwards], plots[:forwards], plots[:bridge]; layout=layout, title=["(a)" "(b)" "(c)"], link=:y, titleloc=:left, plot_defaults...)
 
-    savefig(plt, "experiments/figures/perturbation_examples.pdf")
+    savefig(plt, joinpath("figures", "perturbation_examples.pdf"))
     return plt
 end
