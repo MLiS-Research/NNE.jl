@@ -72,15 +72,13 @@ function plot_s_graph(s_values, τ_values, losses; new_plot=true, kwargs...)
     labels = reshape(["τ=$t" for t in τ_values], 1, :)
     plot_fn = new_plot ? plot : plot!
     plot_defaults = get_plot_defaults()
-    s_ticks = calculate_axis_ticks(minimum(s_values), maximum(s_values); kwargs...)
-    loss_ticks = calculate_axis_ticks(minimum(losses), maximum(losses); kwargs...)
+    # s_ticks = calculate_axis_ticks(minimum(s_values), maximum(s_values); kwargs...)
+    # loss_ticks = calculate_axis_ticks(minimum(losses), maximum(losses); kwargs...)
     plt = plot_fn(s_values, losses, labels=labels;
      yscale=:log10,
      xscale=:log10,
      color_palette=colors,
      legend_position=:topright,
-    #  xticks=s_ticks,
-    #  yticks=loss_ticks,
      plot_defaults...,
      kwargs...
     )

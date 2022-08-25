@@ -68,8 +68,9 @@ function plot_s_vs_loss(trials::AbstractArray{Trial}; kwargs...)
 end
 function plot_s_vs_loss(df::DataFrame; max_loss_samples=typemax(Int), kwargs...)
     trajectory_lengths = sort(collect(Set(df.τ)))
-    plt = plot(;)
-    marker_shapes = (:circle, :rect, :dtriangle, :utriangle, :diamond)
+    defaults = get_plot_defaults();
+    plt = plot(; )
+    marker_shapes = (:circle, :rect, :dtriangle, :utriangle, :diamond, :pentagon)
     for (i, t) in enumerate(trajectory_lengths)
         sub_df = df[df.τ .== t, :]
         s_vals = sort(collect(Set(sub_df.s)))
@@ -84,11 +85,37 @@ function plot_s_vs_loss(df::DataFrame; max_loss_samples=typemax(Int), kwargs...)
             total_error = std(mean(ls) for ls in repeat_ls)/t/sqrt(num_repeats)
             push!(errors, total_error)
         end
-        scatter!(plt, s_vals, losses; label="τ=$t", yerror=errors, markershape=marker_shapes[(i-1)%length(marker_shapes)+1], kwargs...)
+        scatter!(plt, s_vals, losses; label="τ=$t", defaults..., yerror=errors, markershape=marker_shapes[(i-1)%length(marker_shapes)+1], kwargs...)
     end
-    plot!(plt; xscale=:log10, yscale=:log10)
+    plot!(plt; xscale=:log10, yscale=:log10, legend=:bottomleft, defaults...)
     xlabel!(plt, "s")
     ylabel!(plt, "<L>/τ")
+    return plt
+end
+function plot_accuracy_vs_loss(trials::AbstractArray{Trial}; device=gpu, outputs=10, kwargs...)
+    df = DataFrame(trials)
+    prepare_trials_df!(df)
+    trajectory_lengths = sort(collect(Set(df.τ)))
+    defaults = get_plot_defaults();
+    plt = plot(; )
+    marker_shapes = (:circle, :rect, :dtriangle, :utriangle, :diamond, :pentagon)
+    for (i, t) in enumerate(trajectory_lengths)
+        sub_df = df[df.τ .== t, :]
+        s_vals = sort(collect(Set(sub_df.s)))
+        accuracies = Float64[]
+        errors = Float64[]
+        for s in s_vals
+            results_list = [x.results for x in trials if x.results[:τ] == t && x.results[:s] == s]
+            repeat_accs = measure_train_accuracy.(results_list; device, outputs)
+            num_repeats = length(repeat_accs)
+            push!(accuracies, mean(mean(as) for as in repeat_accs))
+            push!(errors, std(mean(as) for as in repeat_accs)/sqrt(num_repeats))
+        end
+        scatter!(plt, s_vals, accuracies .* 100; label="τ=$t", defaults..., yerror=errors, markershape=marker_shapes[(i-1)%length(marker_shapes)+1], kwargs...)
+    end
+    plot!(plt; xscale=:log10, yscale=:log10, legend=:topleft, ylims=(8, 100), defaults...)
+    xlabel!(plt, "s")
+    ylabel!(plt, "Train Accuracy (%)")
     return plt
 end
 function plot_s_vs_acceptance(trials::AbstractArray{Trial}; kwargs...)
