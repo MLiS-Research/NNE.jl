@@ -160,6 +160,7 @@ function solve_mnist_trajectory(;
     fraction_to_include=1.0,
     max_perturb_models=nothing,
     trial_id=nothing,
+    restore_from_complete_trial_id=nothing,
     start_s=nothing,
     annealing_epochs=nothing,
     kwargs...
