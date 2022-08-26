@@ -4,6 +4,7 @@ using Flux
 using Dates
 using Random
 using UUIDs
+using Distributed
 import Distributed: myid
 using CUDA
 

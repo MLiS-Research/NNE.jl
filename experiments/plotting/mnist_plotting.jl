@@ -166,9 +166,9 @@ function plot_avg_loss(results, new_plot=true; should_scale_x=false, kwargs...)
     x_scale = should_scale_x ? LinRange(0, med_duration, length(mean_loss)) : 1:length(mean_loss)
     plt = nothing
     if length(mean_loss) > 5e5
-        mean_loss = conv_1d(mean_loss, 5000, 1000.0)
-        std_loss = conv_1d(std_loss, 5000, 1000.0)
-        plt = @views plot_fn(x_scale[begin:100:end], mean_loss[begin:100:end]; ribbon=(std_loss[begin:100:end], std_loss[begin:100:end]), legend=false, kwargs...)
+        mean_loss = conv_1d(mean_loss, 100, 100.0)
+        std_loss = conv_1d(std_loss, 100, 100.0)
+        plt = @views plot_fn(x_scale[begin:1000:end], mean_loss[begin:1000:end]; ribbon=(std_loss[begin:1000:end], std_loss[begin:1000:end]), legend=false, kwargs...)
     else
         plt = plot_fn(x_scale, mean_loss; ribbon=(std_loss, std_loss), legend=false, kwargs...)
     end
