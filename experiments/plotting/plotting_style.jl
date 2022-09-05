@@ -36,9 +36,10 @@ function get_plot_defaults_full_width()
         :thickness_scaling => 2,
         :lw => 2,
         :grid => nothing,
-        :size => (1200, 600),
+        :size => (800, 300),
         :legend_background_color => nothing,
         :legend_foreground_color => nothing,
+        :titlefontsize => 10,
         :dpi => 300
     )
 end
