@@ -54,9 +54,18 @@ function construct_tps_data_loss_vs_s_plot(plot_inset=true; new_plot=true, kwarg
         linecolor=nothing,
         kwargs...
     )
-    # for i in 0:length(plt.series_list)-1
-    #     plt.series_list[i+1].plotattributes[:series_index] = 1 + (i ÷ 2 % length(t_values)) + (i % 2) * length(t_values)
-    # end
+    n_rows = length(t_values)
+    n_cols = 2
+    for i in 1:length(t_values)
+        plt.series_list[i].plotattributes[:label] = L""
+    end
+    plt.series_list = [plt.series_list[1+(i÷n_cols%n_rows)+(i%n_cols)*n_rows] for i in 0:length(plt.series_list)-1]
+    for i in 1:length(plt.series_list)
+
+        plt.series_list[i].plotattributes[:series_index] = i
+        plt.series_list[i].plotattributes[:series_plotindex] = i
+    end
+    plt.subplots[1].series_list = plt.series_list
 
     return plt
 end
