@@ -12,7 +12,7 @@ function plot_all()
     unity_sigma_losses = reshape(calc_losses(s_values_exact, t_values, [1.0]), length(s_values_exact), length(t_values))
     unity_sigma_results = (s_values_exact, t_values, nothing, nothing, unity_sigma_losses)
 
-    unity_sigma = construct_exact_linear_data_loss_vs_s_plot(false; results=unity_sigma_results)
+    unity_sigma_plt = construct_exact_linear_data_loss_vs_s_plot(false; results=unity_sigma_results)
 
     small_sigma_losses = reshape(calc_losses(s_values_exact, t_values, [0.1]), length(s_values_exact), length(t_values))
     small_sigma_results = (s_values_exact, t_values, nothing, nothing, small_sigma_losses)
@@ -20,11 +20,15 @@ function plot_all()
 
     empircal_plot = construct_tps_data_loss_vs_s_plot()
 
+
+    ylabel!(unity_sigma_plt, "")
+    ylabel!(empircal_plot, "")
+
     full_width_defaults = get_plot_defaults_full_width()
     size = full_width_defaults[:size]
     dpi = full_width_defaults[:dpi]
 
-    return plot(small_sigma_plt, unity_sigma, empircal_plot; layout=(1, 3), title=[L"(a)" L"(b)" L"(c)"], size, dpi)
+    return plot(small_sigma_plt, unity_sigma_plt, empircal_plot; layout=(1, 3), title=[L"(a)" L"(b)" L"(c)"], size, dpi)
 end
 
 function plot_all_and_save()
