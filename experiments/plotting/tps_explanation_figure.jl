@@ -55,13 +55,14 @@ function main_plot(seed=1141; border=0.025)
     plots = Dict{Symbol,Any}()
     minimum_value = minimum(first, states)
     maximum_value = maximum(first, states)
+    defaults = get_plot_defaults()
     for (key, cache) in perturbed_states
         plt = plot_parameter_trajectory(states; label=L"\omega", markershape=:circle)
         new_state = deepcopy(states)
         TPS.MetropolisHastings.apply!(new_state, cache)
         maximum_value = max(maximum_value, maximum(first, new_state))
         minimum_value = min(minimum_value, minimum(first, new_state))
-        plot_parameter_trajectory(new_state; new_plot=false, label=L"\omega'", markershape=:utriangle, linestyle=:dash)
+        plot_parameter_trajectory(new_state; new_plot=false, label=L"\omega'", markershape=:utriangle, linestyle=:dash, defaults...)
 
         plot!(; yticks=false, xticks=false, legend=:topleft)
 
@@ -74,8 +75,9 @@ function main_plot(seed=1141; border=0.025)
     layout = @layout [a b c]
 
     plot_defaults = get_plot_defaults_full_width()
-
-    plt = plot(plots[:backwards], plots[:forwards], plots[:bridge]; layout=layout, title=["(a)" "(b)" "(c)"], link=:y, titleloc=:left, plot_defaults...)
+    size = plot_defaults[:size]
+    size = (size[1], Int(round(size[2] * 2 / 3)))
+    plt = plot(plots[:backwards], plots[:forwards], plots[:bridge]; layout=layout, title=[L"(a)" L"(b)" L"(c)"], link=:y, titleloc=:left, size, dpi=plot_defaults[:dpi], lw=plot_defaults[:lw])
 
     savefig(plt, joinpath("figures", "perturbation_examples.pdf"))
     return plt

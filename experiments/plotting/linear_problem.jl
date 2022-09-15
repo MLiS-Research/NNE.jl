@@ -28,7 +28,7 @@ function plot_all()
     size = full_width_defaults[:size]
     dpi = full_width_defaults[:dpi]
 
-    return plot(small_sigma_plt, unity_sigma_plt, empircal_plot; layout=(1, 3), title=[L"(a)" L"(b)" L"(c)"], size, dpi)
+    return plot(small_sigma_plt, unity_sigma_plt, empircal_plot; layout=(1, 3), title=[L"(a)" L"(b)" L"(c)"], titleloc=:left, size, dpi)
 end
 
 function plot_all_and_save()

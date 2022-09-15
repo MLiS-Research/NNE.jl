@@ -40,6 +40,7 @@ function get_plot_defaults_full_width()
         :legend_background_color => nothing,
         :legend_foreground_color => nothing,
         :titlefontsize => 10,
+        :labelfontsize => 8,
         :dpi => 300
     )
 end
