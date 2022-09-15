@@ -40,7 +40,7 @@ function get_avg_loss(solution; skip=0)
     return mean(solution.observations[(skip+1):end])
 end
 
-function construct_tps_data_loss_vs_s_plot(plot_inset=true; new_plot=true, kwargs...)
+function construct_tps_data_loss_vs_s_plot(; new_plot=true, kwargs...)
     s_values, t_values, _, losses = load_processed_tps_data()
     max_s = maximum(s_values)
     min_s = minimum(s_values)
