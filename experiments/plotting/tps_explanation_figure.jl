@@ -74,10 +74,8 @@ function main_plot(seed=1141; border=0.025)
 
     layout = @layout [a b c]
 
-    plot_defaults = get_plot_defaults_full_width()
-    size = plot_defaults[:size]
-    size = (size[1], Int(round(size[2] * 2 / 3)))
-    plt = plot(plots[:backwards], plots[:forwards], plots[:bridge]; layout=layout, title=[L"(a)" L"(b)" L"(c)"], link=:y, titleloc=:left, size, dpi=plot_defaults[:dpi], lw=plot_defaults[:lw])
+    plot_defaults = get_plot_defaults(; columns=2, height_ratio=1 / 4)
+    plt = plot(plots[:backwards], plots[:forwards], plots[:bridge]; layout=layout, title=[L"(a)" L"(b)" L"(c)"], link=:y, titleloc=:left, plot_defaults...)
 
     savefig(plt, joinpath("figures", "perturbation_examples.pdf"))
     return plt

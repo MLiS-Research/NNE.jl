@@ -20,7 +20,7 @@ function get_examples(digits...)
 end
 
 function create_image_plots(digits...; kwargs...)
-    defaults = get_plot_defaults_full_width()
+    defaults = get_plot_defaults(; columns=2 / 5, height_ratio=5 / 2)
 
     letters = LaTeXString.(["($c)" for c in ('a':'z')[1:length(digits)]])
     images = get_examples(digits...)
@@ -37,7 +37,7 @@ function create_image_plots(digits...; kwargs...)
 end
 
 function create_and_save_mnist_digits()
-    plt = create_image_plots((0:9)...; layout=(2, 5), margin=-8mm)
+    plt = create_image_plots((0:9)...; layout=(5, 2), margin=-8mm)
     savefig(plt, "figures/mnist_digits.pdf")
 end
 
@@ -278,6 +278,7 @@ end
 get_mnist_results_save_path() = joinpath("results", "mnist_data.bson")
 get_mnist_results_figure_s_save_path() = joinpath("figures", "full_mnist_s_ensemble.pdf")
 get_mnist_results_figure_accuracy_save_path() = joinpath("figures", "full_mnist_accuracy.pdf")
+get_combined_mnist_graph_save_path() = joinpath("figures", "all_mnist_graphs.pdf")
 
 function get_mnist_results()
     results = nothing
@@ -348,5 +349,25 @@ function plot_and_save_mnist_accuracy_graph()
     plt = plot_mnist_accuracy_graph()
 
     savefig(plt, get_mnist_results_figure_accuracy_save_path())
+    nothing
+end
+
+function plot_combined_mnist_graph()
+    plt_digits = create_image_plots((0:9)...; layout=(5, 2), margin=-5mm, aspect_ratio=1)
+    plt_losses = plot_mnist_s_graph()
+    plt_accuracy = plot_mnist_accuracy_graph()
+    plot!(plt_losses, legend=false, left_margin=30mm)
+    plot!(plt_accuracy, legend=:outerright, left_margin=30mm)
+
+    defaults = get_plot_defaults(; columns=2, height_ratio=1 / 3)
+    titles = [L"(a)" "" "" "" "" "" "" "" "" "" L"(b)" L"(c)"]
+    l = @layout [a{0.15w} b{0.35w} c{0.35w}]
+    return plot(plt_digits, plt_losses, plt_accuracy; layout=l, titles=titles, titlelocations=:left, defaults...)
+end
+
+function plot_and_save_combined_mnist()
+    plt = plot_combined_mnist_graph()
+
+    savefig(plt, get_combined_mnist_graph_save_path())
     nothing
 end

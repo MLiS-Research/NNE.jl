@@ -24,11 +24,9 @@ function plot_all()
     ylabel!(unity_sigma_plt, "")
     ylabel!(empircal_plot, "")
 
-    full_width_defaults = get_plot_defaults_full_width()
-    size = full_width_defaults[:size]
-    dpi = full_width_defaults[:dpi]
+    full_width_defaults = get_plot_defaults(; columns=2, height_ratio=0.25)
 
-    return plot(small_sigma_plt, unity_sigma_plt, empircal_plot; layout=(1, 3), title=[L"(a)" L"(b)" L"(c)"], titleloc=:left, size, dpi)
+    return plot(small_sigma_plt, unity_sigma_plt, empircal_plot; layout=(1, 3), title=[L"(a)" L"(b)" L"(c)"], titleloc=:left, full_width_defaults...)
 end
 
 function plot_all_and_save()

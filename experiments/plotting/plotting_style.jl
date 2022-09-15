@@ -18,30 +18,26 @@ function ensure_pgfplots_packages()
 end
 ensure_pgfplots_packages()
 
-function get_plot_defaults()
-    return Dict{Symbol,Any}(
-        :dpi => 300,
-        :thickness_scaling => 2,
-        :size => (400, 400),
-        :lw => 2,
-        :legend_background_color => nothing,
-        :legend_foreground_color => nothing,
-        :grid => nothing
-    )
+function get_pixel_size(; columns=1, dpi=300, height_ratio=1)
+    target_size = (86mm * columns, 86mm * columns * height_ratio)
+    mm_to_inches = 0.03937008
+    pixel_size = (x -> Int(round(x))).((x -> x.value).(target_size) .* mm_to_inches .* dpi)
+
+    return pixel_size
 end
 
-function get_plot_defaults_full_width()
+function get_plot_defaults(; columns=1, dpi=300, height_ratio=1)
+    pixel_size = get_pixel_size(; columns, dpi, height_ratio)
 
     return Dict{Symbol,Any}(
-        :thickness_scaling => 2,
+        :dpi => dpi,
+        :thickness_scaling => 3,
         :lw => 2,
-        :grid => nothing,
-        :size => (800, 300),
+        :markersize => 4,
         :legend_background_color => nothing,
         :legend_foreground_color => nothing,
-        :titlefontsize => 10,
-        :labelfontsize => 8,
-        :dpi => 300
+        :grid => nothing,
+        :size => pixel_size
     )
 end
 
