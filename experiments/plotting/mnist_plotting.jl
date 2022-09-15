@@ -15,23 +15,30 @@ function get_examples(digits...)
     labels = MNIST.trainlabels(1:100)
     indices = [findlast(labels .== d) for d in digits]
     data = MNIST.traintensor(Float32, indices)
-    image_data = [Gray.(reshape(data[:, :, i], 28, 28)') for i = 1:length(indices)]
+    image_data = [(reshape(data[:, :, i], 28, 28)') for i = 1:length(indices)]
     return image_data
 end
 
-function create_image_plots(digits...)
-    defaults = get_plot_defaults()
+function create_image_plots(digits...; kwargs...)
+    defaults = get_plot_defaults_full_width()
 
-    letters = ["($c)" for c in ('a':'z')[1:length(digits)]]
+    letters = LaTeXString.(["($c)" for c in ('a':'z')[1:length(digits)]])
     images = get_examples(digits...)
     plts = []
     for (img, l) in zip(images, letters)
-        plt = plot(img; ticks=false, title=l, titleloc=:left, defaults)
+        # plt = heatmap(img; ticks=false, title=l, colorbar=:none, aspect_ratio=1, c=:grays, grid=nothing, showaxis=false)
+        plt = heatmap(img; ticks=false, colorbar=:none, aspect_ratio=1, c=:grays, grid=nothing, showaxis=false)
+        Plots.yflip!(plt)
         push!(plts, plt)
     end
 
-    plt = plot(plts...)
+    plt = plot(plts...; defaults..., kwargs...)
     return plt
+end
+
+function create_and_save_mnist_digits()
+    plt = create_image_plots((0:9)...; layout=(2, 5), margin=-8mm)
+    savefig(plt, "figures/mnist_digits.pdf")
 end
 
 function reconstruct_mnist_models(info_dict; outputs=2, device=cpu)
