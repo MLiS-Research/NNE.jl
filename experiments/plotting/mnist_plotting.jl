@@ -302,7 +302,7 @@ function plot_mnist_s_graph()
     marker_shapes = (:circle, :rect, :dtriangle, :utriangle, :diamond, :star5)
     wrapped_shapes = reshape([marker_shapes[(i-1)%length(marker_shapes)+1] for i in 1:length(t_values)], 1, :)
     plt = plot_s_graph(s_values, t_values, losses;
-        linecolor=nothing,
+        linestyle=:dash,
         markershape=wrapped_shapes,
         legend=:bottomleft,
         ticks_kwargs=Dict(:round_digits => 0, :power_step => 1)
@@ -327,7 +327,7 @@ function plot_mnist_accuracy_graph()
 
     marker_shapes = (:circle, :rect, :dtriangle, :utriangle, :diamond, :star5)
     wrapped_shapes = reshape([marker_shapes[(i-1)%length(marker_shapes)+1] for i in 1:length(t_values)], 1, :)
-    plt = plot_s_graph(s_values, t_values, accuracies; linecolor=nothing, markershape=wrapped_shapes, legend=:topleft, yerr=accuracy_errors)
+    plt = plot_s_graph(s_values, t_values, accuracies; linestyle=:dash, markershape=wrapped_shapes, legend=:topleft, yerr=accuracy_errors)
 
 
     plot!(plt; yticks=[10, 50, 100], xticks=([5, 50], ["5", "50"]), yscale=:normal, grid=true, minorgrid=true)
