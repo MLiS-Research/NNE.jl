@@ -56,13 +56,16 @@ function main_plot(seed=1141; border=0.025)
     minimum_value = minimum(first, states)
     maximum_value = maximum(first, states)
     defaults = get_plot_defaults()
+
+    original_color = palette(:matter)[192]
+    new_color = palette(:matter)[64]
     for (key, cache) in perturbed_states
-        plt = plot_parameter_trajectory(states; label=L"\omega", markershape=:circle)
+        plt = plot_parameter_trajectory(states; label=L"\omega", markershape=:circle, c=original_color)
         new_state = deepcopy(states)
         TPS.MetropolisHastings.apply!(new_state, cache)
         maximum_value = max(maximum_value, maximum(first, new_state))
         minimum_value = min(minimum_value, minimum(first, new_state))
-        plot_parameter_trajectory(new_state; new_plot=false, label=L"\omega'", markershape=:utriangle, linestyle=:dash, defaults...)
+        plot_parameter_trajectory(new_state; new_plot=false, label=L"\omega'", markershape=:utriangle, linestyle=:dash, c=new_color, defaults...)
 
         plot!(; yticks=false, xticks=false, legend=:topleft)
 
