@@ -2,13 +2,13 @@ module MNISTTraining
 
 using Flux
 using MLDatasets
-using TPS
-using TPS.MetropolisHastings
-using TPS.SimulatedAnnealing
-using TPS.DiscreteTrajectory
-using TPS.Convergence
-using TPS.Callbacks
-using TPS.Annealing
+using TransitionPathSampling
+using TransitionPathSampling.MetropolisHastings
+using TransitionPathSampling.SimulatedAnnealing
+using TransitionPathSampling.DiscreteTrajectory
+using TransitionPathSampling.Convergence
+using TransitionPathSampling.Callbacks
+using TransitionPathSampling.Annealing
 using Random
 using ProgressBars
 using Plots
@@ -71,7 +71,7 @@ function create_mnist_sa_problem(n_samples::Int=1000; device=cpu, outputs=10, da
 
     info = Dict(:features => data, :labels => labels, :labels_one_hot => labels_one_hot, :initial_state => θ, :model_re_fn => re, :loss_fn => loss_fn)
 
-    obs = TPS.SimpleObservable(loss_fn)
+    obs = TransitionPathSampling.SimpleObservable(loss_fn)
     return SAProblem(obs, θ), info
 end
 
@@ -96,7 +96,7 @@ function create_mnist_trajectory_state_and_loss(τ, σ, n_samples; kwargs...)
         return loss_fn(state)
     end
 
-    obs = TPS.SimpleObservable(traj_loss_fn)
+    obs = TransitionPathSampling.SimpleObservable(traj_loss_fn)
     problem = DTProblem(obs, states)
 
     info[:traj_loss_fn] = traj_loss_fn
@@ -131,7 +131,7 @@ function solve_mnist_sa(;
     problem, info = create_mnist_sa_problem(n_samples; device, outputs)
     restore_state!(problem, restore_from_complete_trial_id; device)
     cb = create_callbacks(trial_id, device, info; kwargs...)
-    alg = TPS.MetropolisHastings.gaussian_sa_algorithm(s, σ; params_changed_frac=fraction_to_include)
+    alg = MetropolisHastings.gaussian_sa_algorithm(s, σ; params_changed_frac=fraction_to_include)
     if !isnothing(start_s) && !isnothing(annealing_epochs)
         alg = wrap_algorithm(alg, SAnnealParameters(start_s, s, annealing_epochs))
     end

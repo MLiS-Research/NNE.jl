@@ -1,7 +1,7 @@
 using NNE
 using NNE.MNISTTraining
-using TPS
-using TPS.MetropolisHastings
+using TransitionPathSampling
+using TransitionPathSampling.MetropolisHastings
 using Flux
 using Memoization
 using Statistics
@@ -9,7 +9,7 @@ using Plots
 
 function create_problem_and_info(n_samples, τ, σ, device=:cpu)
     device_fn = device == :gpu ? gpu : cpu
-    if τ==1
+    if τ == 1
         return NNE.MNISTTraining.create_mnist_sa_problem(n_samples; device=device_fn, outputs=10)
     else
         return NNE.MNISTTraining.create_mnist_trajectory_state_and_loss(τ, σ, n_samples; device=device_fn, outputs=10)
@@ -31,14 +31,14 @@ function plot_loss_and_acceptance(τ, s, σ, epochs, n_samples=1024, device=:cpu
     alg = get_algorithm(τ, s, σ, params_changed_frac, max_width)
 
     sol = solve(problem, alg, epochs)
-    info[:final_state] = TPS.get_current_state(sol)
+    info[:final_state] = get_current_state(sol)
 
-    accuracies = measure_train_accuracy(τ, info; device = (device == :gpu ? gpu : cpu), outputs=10);
+    accuracies = measure_train_accuracy(τ, info; device=(device == :gpu ? gpu : cpu), outputs=10)
 
     plt = plot(sol.observations ./ τ; xscale=:log10, yscale=:log10, legend=false)
     xlabel!("Epochs")
     ylabel!("L/τ")
-    acceptance = round(1.0 - mean(Float64.(diff(sol.observations).==0)); sigdigits=4)
+    acceptance = round(1.0 - mean(Float64.(diff(sol.observations) .== 0)); sigdigits=4)
     title!("τ=$τ, s=$s,σ=$σ, n=2^$(Int(round(log2(n_samples)))), f=$params_changed_frac, <A>=$acceptance")
     return accuracies, plt
 end

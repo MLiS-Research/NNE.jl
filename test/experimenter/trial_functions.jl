@@ -1,7 +1,7 @@
-using TPS
-using TPS.MetropolisHastings
-using TPS.DiscreteTrajectory
-using TPS.SimulatedAnnealing
+using TransitionPathSampling
+using TransitionPathSampling.MetropolisHastings
+using TransitionPathSampling.DiscreteTrajectory
+using TransitionPathSampling.SimulatedAnnealing
 using NNE
 using NNE.Experimenter
 using NNE.CallbackGenerator
@@ -22,10 +22,10 @@ function run_restore_experiment(config, trial_id)
     if haskey(config, :restore_from_trial_id)
         restore_state!(problem, config[:restore_from_trial_id])
     end
-    info[:initial_state] = TPS.get_initial_state(problem)
+    info[:initial_state] = TransitionPathSampling.get_initial_state(problem)
     alg = example_tps_algorithm(config[:s], config[:σ], config[:τ])
     sol = solve(problem, alg, 1:config[:epochs])
-    info[:final_state] = TPS.get_current_state(sol)
+    info[:final_state] = get_current_state(sol)
 
     return info
 end
@@ -41,7 +41,7 @@ end
 
 function example_tps_problem(τ, d)
     states = [rand(d) for _ in 1:τ]
-    obs = TPS.SimpleObservable(example_tps_loss_fn)
+    obs = TransitionPathSampling.SimpleObservable(example_tps_loss_fn)
     return τ == 1 ? SAProblem(obs, first(states)) : DTProblem(obs, states)
 end
 

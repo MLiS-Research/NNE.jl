@@ -1,11 +1,11 @@
 module ProblemGenerators
-using TPS
-using TPS.SimulatedAnnealing
-using TPS.DiscreteTrajectory
+using TransitionPathSampling
+using TransitionPathSampling.SimulatedAnnealing
+using TransitionPathSampling.DiscreteTrajectory
 using Random
 
 function create_sa_problem(loss_fn, initial_state)
-    obs = TPS.SimpleObservable(loss_fn)
+    obs = TransitionPathSampling.SimpleObservable(loss_fn)
     return SAProblem(obs, initial_state)
 end
 function create_trajectory_problem(loss_fn, initial_state, τ, σ; rng=Random.GLOBAL_RNG)
@@ -21,12 +21,12 @@ function create_trajectory_problem(loss_fn, initial_state, τ, σ; rng=Random.GL
     function trajectory_loss_fn(states::AbstractArray{T}) where {T<:AbstractArray}
         return [loss_fn(state) for state in states]
     end
-    
-    obs = TPS.SimpleObservable(trajectory_loss_fn)
+
+    obs = TransitionPathSampling.SimpleObservable(trajectory_loss_fn)
     return DTProblem(obs, states)
 end
 function create_problem(loss_fn, initial_state, τ, σ; rng=Random.GLOBAL_RNG)
-    if τ==1
+    if τ == 1
         return create_sa_problem(loss_fn, initial_state)
     else
         return create_trajectory_problem(loss_fn, initial_state, τ, σ; rng=rng)
