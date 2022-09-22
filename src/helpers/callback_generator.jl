@@ -1,8 +1,8 @@
 module CallbackGenerator
-using TPS
-using TPS.Callbacks
-using TPS.SimulatedAnnealing
-using TPS.DiscreteTrajectory
+using TransitionPathSampling
+using TransitionPathSampling.Callbacks
+using TransitionPathSampling.SimulatedAnnealing
+using TransitionPathSampling.DiscreteTrajectory
 using ..Experimenter
 using UUIDs
 import Flux: cpu, gpu
@@ -102,8 +102,8 @@ function create_callbacks(trial_id::UUID, device, info=nothing; save_final_snaps
     skip_fields = Set((:exclude_parameter_mask, :indices_changed, :observable))
 
     function take_snapshot(deps::SolveDependencies)
-        cb_storage[:current_state] = move_state(TPS.get_current_state(deps.solution), cpu)
-        if isa(deps.solution, TPS.SimpleSolution)
+        cb_storage[:current_state] = move_state(get_current_state(deps.solution), cpu)
+        if isa(deps.solution, SimpleSolution)
             cb_storage[:observations] = deps.solution.observations
         end
         cb_storage[:cache] = sanitise_object(deps.cache; skip_fields)
@@ -126,8 +126,8 @@ function create_callbacks(trial_id::UUID, device, info=nothing; save_final_snaps
         else
             @debug "Did not find :rng_state in the snapshot state"
         end
-        TPS.set_current_state!(deps.solution, move_state(cb_storage[:current_state], device))
-        if isa(deps.solution, TPS.SimpleSolution)
+        set_current_state!(deps.solution, move_state(cb_storage[:current_state], device))
+        if isa(deps.solution, SimpleSolution)
             if haskey(cb_storage, :observations)
                 deps.solution.observations = cb_storage[:observations]
             else
@@ -146,7 +146,7 @@ function create_callbacks(trial_id::UUID, device, info=nothing; save_final_snaps
         nothing
     end
     function record_acceptances(deps::SolveDependencies)
-        push!(info[:acceptances], TPS.MetropolisHastings.last_accepted(deps.cache))
+        push!(info[:acceptances], TransitionPathSampling.MetropolisHastings.last_accepted(deps.cache))
     end
     function throttle(fn, n)
         counter = 0

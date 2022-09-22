@@ -1,6 +1,6 @@
 include("plotting_style.jl")
 using NNE
-using TPS
+using TransitionPathSampling
 using Random
 using Plots
 using Statistics

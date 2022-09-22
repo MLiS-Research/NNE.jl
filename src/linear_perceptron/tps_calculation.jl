@@ -1,9 +1,9 @@
 module LinearTPSCalculation
-using TPS
-using TPS.SimulatedAnnealing
-using TPS.MetropolisHastings
-using TPS.Convergence
-using TPS.DiscreteTrajectory
+using TransitionPathSampling
+using TransitionPathSampling.SimulatedAnnealing
+using TransitionPathSampling.MetropolisHastings
+using TransitionPathSampling.Convergence
+using TransitionPathSampling.DiscreteTrajectory
 
 include("data_generation.jl")
 
@@ -11,7 +11,7 @@ get_flat_weights(rng) = reshape(generate_weights(rng, 1, 1), :)
 
 function create_sa_problem(loss_fn; rng=Random.GLOBAL_RNG)
     initial_state = get_flat_weights(rng)
-    obs = TPS.SimpleObservable(loss_fn)
+    obs = TransitionPathSampling.SimpleObservable(loss_fn)
     return SAProblem(obs, initial_state)
 end
 function create_trajectory_problem(loss_fn, τ, σ; rng=Random.GLOBAL_RNG)
@@ -23,7 +23,7 @@ function create_trajectory_problem(loss_fn, τ, σ; rng=Random.GLOBAL_RNG)
     end
     trajectory_loss_fn(state::AbstractArray) = loss_fn(state)
     trajectory_loss_fn(state::AbstractArray{T}) where {T<:AbstractArray} = [loss_fn(s) for s in state]
-    obs = TPS.SimpleObservable(trajectory_loss_fn)
+    obs = TransitionPathSampling.SimpleObservable(trajectory_loss_fn)
     return DTProblem(obs, states)
 end
 

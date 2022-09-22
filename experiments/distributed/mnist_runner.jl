@@ -1,5 +1,5 @@
 using NNE.MNISTTraining
-using TPS
+using TransitionPathSampling
 using Flux
 using Dates
 using Random
@@ -9,7 +9,7 @@ import Distributed: myid
 using CUDA
 
 function clean_info_dict(dict)
-    dict[:initial_state] = TPS.get_initial_state(dict[:solution].problem)
+    dict[:initial_state] = TransitionPathSampling.get_initial_state(dict[:solution].problem)
     dict[:observations] = dict[:solution].observations |> cpu
     dict[:final_state] = dict[:solution].state |> cpu
     keys_to_remove = [:solution, :labels_one_hot]

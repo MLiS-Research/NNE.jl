@@ -1,6 +1,6 @@
 using NNE.LinearTPSCalculation
 using NNE
-using TPS
+using TransitionPathSampling
 using Plots
 using LaTeXStrings
 using ProgressBars
@@ -21,8 +21,8 @@ function init(τ, σ, s)
     problem = construct_problem(τ, σ)
     algorithm = construct_algorithm(τ, s, σ)
 
-    solution = TPS.init_solution(algorithm, problem)
-    cache = TPS.generate_cache(algorithm, problem)
+    solution = init_solution(algorithm, problem)
+    cache = generate_cache(algorithm, problem)
 
     s_values = [(0, convert(Float64, s))]
     return TPSData(problem, algorithm, solution, cache, s_values, 0)
@@ -30,7 +30,7 @@ end
 
 function step!(data::TPSData)
     data.epoch += 1
-    TPS.step!(data.cache, data.solution, data.algorithm, data.epoch)
+    step!(data.cache, data.solution, data.algorithm, data.epoch)
 end
 
 function step_many!(data::TPSData, num_epochs::Int)

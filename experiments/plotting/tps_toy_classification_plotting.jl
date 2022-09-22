@@ -1,6 +1,6 @@
 include("plotting_style.jl")
 using NNE
-using TPS
+using TransitionPathSampling
 using Random
 using Plots
 using Statistics
@@ -19,7 +19,7 @@ function process_tps_toy_data_and_save()
     s_values, t_values, σ, results = load_tps_toy_data()
     times_arr = hcat(repeat(t_values', length(s_values)))
     get_last_n_losses(solution, n) = mean(solution.observations[(end-n):end])
-    losses = (x->get_last_n_losses(x, 50000)).(results) ./ times_arr
+    losses = (x -> get_last_n_losses(x, 50000)).(results) ./ times_arr
 
     @save "results/tpy_toy_classification.bson" s_values t_values σ losses
     nothing

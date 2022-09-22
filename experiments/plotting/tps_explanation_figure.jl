@@ -1,8 +1,8 @@
-using TPS
+using TransitionPathSampling
 using Plots
 using LaTeXStrings
-using TPS.MetropolisHastings
-using TPS.DiscreteTrajectory
+using TransitionPathSampling.MetropolisHastings
+using TransitionPathSampling.DiscreteTrajectory
 using Random
 include("plotting_style.jl")
 
@@ -26,18 +26,18 @@ function generate_perturbations(states, σ)
     # Generate initial state
     loss_fn(x::AbstractArray) = 0.0
     loss_fn(x::AbstractArray{T}) where {T<:AbstractArray} = [loss_fn(y) for y in x]
-    cache = TPS.generate_cache(TPS.MetropolisHastings.gaussian_trajectory_algorithm(0.0, σ), TPS.DiscreteTrajectory.DTProblem(TPS.SimpleObservable(loss_fn), states))
+    cache = generate_cache(MetropolisHastings.gaussian_trajectory_algorithm(0.0, σ), DiscreteTrajectory.DTProblem(TransitionPathSampling.SimpleObservable(loss_fn), states))
 
     # Shooting forwards
-    TPS.MetropolisHastings.shoot!(cache, states, 6, σ, true)
+    MetropolisHastings.shoot!(cache, states, 6, σ, true)
     forwards_state = deepcopy(cache)
 
     # Shooting backwards
-    TPS.MetropolisHastings.shoot!(cache, states, 4, σ, false)
+    MetropolisHastings.shoot!(cache, states, 4, σ, false)
     backwards_state = deepcopy(cache)
 
     # Bridging
-    TPS.MetropolisHastings.bridge!(cache, states, 3, 7, σ)
+    MetropolisHastings.bridge!(cache, states, 3, 7, σ)
     bridge_end = deepcopy(cache)
 
     perturbed_states = Dict{Symbol,Any}(:forwards => forwards_state, :backwards => backwards_state, :bridge => bridge_end)
@@ -62,7 +62,7 @@ function main_plot(seed=1141; border=0.025)
     for (key, cache) in perturbed_states
         plt = plot_parameter_trajectory(states; label=L"\omega", markershape=:circle, c=original_color)
         new_state = deepcopy(states)
-        TPS.MetropolisHastings.apply!(new_state, cache)
+        MetropolisHastings.apply!(new_state, cache)
         maximum_value = max(maximum_value, maximum(first, new_state))
         minimum_value = min(minimum_value, minimum(first, new_state))
         plot_parameter_trajectory(new_state; new_plot=false, label=L"\omega'", markershape=:utriangle, linestyle=:dash, c=new_color, defaults...)
