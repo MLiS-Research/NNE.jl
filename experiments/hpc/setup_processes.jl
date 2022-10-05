@@ -55,7 +55,7 @@ println("Setting up SLURM!")
 # Setup SLURM
 num_tasks = parse(Int, ENV["SLURM_NTASKS"])
 cpus_per_task = parse(Int, ENV["SLURM_CPUS_PER_TASK"])
-addprocs(SlurmManager(num_tasks); exeflags=["-t$cpus_per_task"])
+addprocs(SlurmManager(num_tasks); exeflags=["-t$cpus_per_task"], topology=:master_worker)
 
 println("Workers: $(length(workers()))")
 
