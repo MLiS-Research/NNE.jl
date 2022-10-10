@@ -8,6 +8,7 @@ using DataFrames
 using NNE.MNISTTraining
 using NNE.Experimenter
 using Base.Iterators
+using ProgressBars
 using BSON: @save, @load
 include("plotting_style.jl")
 
@@ -238,7 +239,7 @@ function plot_acceptance(results, new_plot=true; should_scale_x=false, kwargs...
 end
 
 
-function prepare_mnist_results(trials::AbstractArray{Trial}; max_loss_samples=typemax(Int), device=gpu, outputs=10, kwargs...)
+function prepare_mnist_results(trials::AbstractArray{Trial}; max_loss_samples=typemax(Int), device=gpu, outputs=10, use_progress=false, kwargs...)
     trajectory_lengths = sort(collect(Set([x.configuration[:τ] for x in trials])))
 
     results = Dict{Symbol,Any}()
@@ -247,9 +248,11 @@ function prepare_mnist_results(trials::AbstractArray{Trial}; max_loss_samples=ty
 
     for (i, t) in enumerate(trajectory_lengths)
         s_vals = sort(collect(Set([x.configuration[:s] for x in trials if x.configuration[:τ] == t])))
+        
 
         t_data = Dict{Float64,Any}()
-        for (j, s) in enumerate(s_vals)
+        iter = use_progress ? ProgressBar(enumerate(s_vals)) : enumerate(s_vals)
+        for (j, s) in iter
             s_data = Dict{Symbol,Any}()
             loss_arrays = [x.results[:observations] for x in trials if x.configuration[:τ] == t && x.configuration[:s] == s]
             repeat_ls = (x -> length(x) > max_loss_samples ? x[end-max_loss_samples+1:end] : x).(loss_arrays)
