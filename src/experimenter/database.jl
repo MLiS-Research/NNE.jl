@@ -189,6 +189,30 @@ function get_trials_by_name(db::ExperimentDatabase, name)
     return [Trial(row) for row in eachrow(df)]
 end
 
+function get_trials_ids_by_name(db::ExperimentDatabase, name)
+    sql = raw"""
+    SELECT name, Trials.id as id, trial_index 
+    FROM Trials 
+    INNER JOIN Experiments ON Experiments.id == Trials.experiment_id 
+    WHERE name = ? 
+    ORDER BY trial_index
+    """
+    df = (SQLite.DBInterface.execute(db._db, sql, (name,)) |> DataFrame)
+    return [UUID(row.id) for row in eachrow(df)]
+end
+
+function get_ratio_completed_trials_by_name(db::ExperimentDatabase, name)
+    sql = raw"""
+    SELECT Avg(CAST(has_finished as REAL)) as ratio_finished
+    FROM Trials
+    INNER JOIN Experiments ON Experiments.id == Trials.experiment_id 
+    WHERE name = ?
+    """
+    df = (SQLite.DBInterface.execute(db._db, sql, (name,)) |> DataFrame)
+    return first([row.ratio_finished for row in eachrow(df)])
+end
+
+
 function complete_trial!(db::ExperimentDatabase, trial_id::UUID, results::Dict{Symbol,Any})
     stmt = SQLite.Stmt(db._db, "UPDATE Trials SET results = @results, has_finished = @finished WHERE id = @id")
     vs = Dict{Symbol,Any}(:results => results, :finished => true, :id => string(trial_id))
