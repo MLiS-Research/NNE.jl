@@ -248,7 +248,7 @@ function prepare_mnist_results(trials::AbstractArray{Trial}; max_loss_samples=ty
 
     for (i, t) in enumerate(trajectory_lengths)
         s_vals = sort(collect(Set([x.configuration[:s] for x in trials if x.configuration[:τ] == t])))
-        
+
 
         t_data = Dict{Float64,Any}()
         iter = use_progress ? ProgressBar(enumerate(s_vals)) : enumerate(s_vals)
