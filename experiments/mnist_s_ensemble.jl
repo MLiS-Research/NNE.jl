@@ -1,7 +1,11 @@
 using NNE
 using NNE.Experimenter
+db = open_db("experiments.db", joinpath(pwd(), "results", "large"))
 
-db = open_db("export_sulis_mnist_results.db", joinpath(pwd(), "results", "large"))
+trials = get_trials_by_name(db, "MNIST");
 
-trials = get_trials_by_name(db, "MNIST Final Results 1");
-
+should_prepare = true
+if should_prepare
+    include("plotting/mnist_plotting.jl");
+    prepare_mnist_results(trials, max_loss_samples=Int(5e6),device=gpu,outputs=10,use_progress=true)
+end
