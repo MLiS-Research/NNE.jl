@@ -1,6 +1,6 @@
 using NNE
-using NNE.Experimenter
-using NNE.Experimenter: @execute
+using Experimenter
+using Experimenter: @execute
 
 db = open_db("experiments.db", joinpath(pwd(), "results", "large"))
 

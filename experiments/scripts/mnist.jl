@@ -1,6 +1,6 @@
 using NNE
-using NNE.Experimenter
-using NNE.Experimenter: @execute
+using Experimenter
+using Experimenter: @execute
 using Logging
 
 should_extend = false
@@ -41,7 +41,7 @@ experiment = restore_from_db(db, experiment)
 if should_extend
     @info "Extending trials"
     for trial in experiment
-        mark_trial_as_incomplete!(db, trial.id);
+        mark_trial_as_incomplete!(db, trial.id)
     end
 end
 

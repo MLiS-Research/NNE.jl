@@ -3,7 +3,7 @@ using TransitionPathSampling
 using TransitionPathSampling.Callbacks
 using TransitionPathSampling.SimulatedAnnealing
 using TransitionPathSampling.DiscreteTrajectory
-using ..Experimenter
+using Experimenter
 using UUIDs
 import Flux: cpu, gpu
 using Logging

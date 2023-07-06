@@ -6,7 +6,7 @@ using Flux
 using Statistics
 using DataFrames
 using NNE.MNISTTraining
-using NNE.Experimenter
+using Experimenter
 using Base.Iterators
 using ProgressBars
 using BSON: @save, @load
