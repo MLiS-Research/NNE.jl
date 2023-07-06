@@ -10,6 +10,7 @@ include("classification/toy_problem.jl")
 
 include("helpers/callback_generator.jl")
 
+include("image_classification/image_classification.jl")
 include("mnist/mnist.jl") # MNIST module
 include("toy_example/toy.jl")
 
