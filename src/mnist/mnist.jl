@@ -11,7 +11,6 @@ using TransitionPathSampling.Callbacks
 using TransitionPathSampling.Annealing
 using Random
 using ProgressBars
-using Plots
 import ..CallbackGenerator: create_callbacks, restore_state!
 
 
