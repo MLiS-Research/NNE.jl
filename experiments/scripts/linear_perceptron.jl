@@ -1,6 +1,6 @@
 using NNE
-using NNE.Experimenter
-using NNE.Experimenter: @execute
+using Experimenter
+using Experimenter: @execute
 
 num_repeats = 3
 experiment_name = "Perceptron Ex 0"

@@ -1,5 +1,5 @@
 using NNE
-using NNE.Experimenter
+using Experimenter
 
 db = open_db("experiments.db", joinpath(pwd(), "results", "large"))
 export_db_file = joinpath(pwd(), "results", "large", "export.db")
