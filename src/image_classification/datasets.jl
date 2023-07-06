@@ -12,12 +12,12 @@ struct ImageDataset{T1,T2}
     name::Symbol
 end
 
-Base.@kwdef struct PreprocessConfig
+Base.@kwdef struct PreprocessConfig{T<:Union{AbstractArray,Set}}
     shuffle::Bool = false
     shuffle_rng_seed::Int = 789224195
     max_samples_per_label::Union{Nothing,Int} = nothing
     correct_zero_based::Bool = true
-    excluded_samples::Set{Int} = Set{Int}()
+    excluded_samples::T = Set{Int}()
 end
 
 function _get_dataset_generator(name::Symbol)
@@ -61,10 +61,10 @@ function load_dataset(name::Symbol; split::DatasetSplit=SplitTrain, config::Prep
     if length(config.excluded_samples) > 0
         indicies_to_keep = map(l -> !(l in config.excluded_samples), labels)
         unique_classes = filter(x -> !(x in config.excluded_samples), unique_classes)
+        labels = labels[indicies_to_keep]
+        features = _select_images(features, indicies_to_keep)
     end
-    labels = labels[indicies_to_keep]
 
-    features = _select_images(features, indicies_to_keep)
 
     if config.shuffle
         rng = Random.Xoshiro(config.shuffle_rng_seed)
@@ -75,7 +75,7 @@ function load_dataset(name::Symbol; split::DatasetSplit=SplitTrain, config::Prep
 
     if !isnothing(config.max_samples_per_label)
         class_idxs = map(unique_classes) do class_lbl
-            idxs = map((i, _) -> i, filter((_, l) -> l == class_lbl, labels))
+            idxs = [i for (i, lbl) in enumerate(labels) if lbl == class_lbl]
             if length(idxs) < config.max_samples_per_label
                 @warn "Class index $class_lbl only has $(length(idxs)) images, but aiming for $(config.max_samples_per_label) images."
             else
@@ -84,8 +84,8 @@ function load_dataset(name::Symbol; split::DatasetSplit=SplitTrain, config::Prep
             idxs
         end
 
-        features = reduce(hcat, Iterators.map(idxs -> _select_images_view(features, indicies_to_keep), class_idxs))
-        labels = reduce(hcat, Iterators.map(idxs -> @views labels[idxs], class_idxs))
+        features = reduce(hcat, map(idxs -> _select_images_view(features, idxs), class_idxs))
+        labels = reduce(vcat, map(idxs -> view(labels, idxs), class_idxs))
 
         if config.shuffle # shuffle again
             rng = Random.Xoshiro(config.shuffle_rng_seed)
@@ -97,6 +97,7 @@ function load_dataset(name::Symbol; split::DatasetSplit=SplitTrain, config::Prep
 
     img_size = (size(features, 1), size(features, 2))
     num_channels = if length(size(features)) == 3
+        features = reshape(features, img_size..., 1, :) # Make sure to convert the shape to be consistent
         1
     else
         size(features, 3)

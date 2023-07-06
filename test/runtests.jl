@@ -1,7 +1,3 @@
-using NNE
-using Test
-using SafeTestsets
+using TestItemRunner
 
-@safetestset "Default" begin
-    @test true
-end
+@run_package_tests verbose = true
