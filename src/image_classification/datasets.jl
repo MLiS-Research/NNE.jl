@@ -2,7 +2,7 @@
 import MLDatasets
 import Random
 using Logging
-
+using Flux
 
 struct ImageDataset{T1,T2}
     features::T1
@@ -42,7 +42,7 @@ end
 _select_images(f, indices) = f[((i -> 1:i).(size(f)[begin:end-1]))..., indices]
 _select_images_view(f, indices) = @views f[((i -> 1:i).(size(f)[begin:end-1]))..., indices]
 
-function load_dataset(name::Symbol; split::DatasetSplit=SplitTrain, config::PreprocessConfig=PreprocessConfig())
+function load_dataset(name::Symbol; split::DatasetSplit=SplitTrain, config::PreprocessConfig=PreprocessConfig(), device=Flux.cpu)
     dataset_generator = _get_dataset_generator(name)
     dataset = dataset_generator(; split=_split_to_symbol(split))
 
@@ -83,8 +83,16 @@ function load_dataset(name::Symbol; split::DatasetSplit=SplitTrain, config::Prep
             end
             idxs
         end
-
-        features = reduce(hcat, map(idxs -> _select_images_view(features, idxs), class_idxs))
+        image_views = map(idxs -> _select_images_view(features, idxs), class_idxs)
+        total_images = sum(x->size(x, ndims(x)), image_views)
+        new_features = similar(features, eltype(features), ((size(features)[begin:end-1])..., total_images))
+        image_offset = 1
+        for img_view in image_views
+            n_images = size(img_view, ndims(img_view))
+            new_features[(1:d for d in size(features)[begin:end-1])..., image_offset:(image_offset+n_images-1)] .= img_view
+            image_offset += n_images
+        end
+        features = new_features
         labels = reduce(vcat, map(idxs -> view(labels, idxs), class_idxs))
 
         if config.shuffle # shuffle again
@@ -104,7 +112,7 @@ function load_dataset(name::Symbol; split::DatasetSplit=SplitTrain, config::Prep
     end
 
 
-    return ImageDataset(features, labels, img_size, num_channels, name)
+    return ImageDataset(features |> device, labels |> device, img_size, num_channels, name)
 end
 
 ## API
