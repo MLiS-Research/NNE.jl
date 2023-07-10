@@ -24,7 +24,7 @@ begin
     return plt
 end
 
-import CUDA
+import CUDA: cu
 ensemble = NNE.Ensembles.ClassificationEnsemble(model, cu.(results[:final_state]));
 test_dataset = load_dataset(:MNIST; split=SplitTest, device);
 test_predictions = NNE.Interfaces.predict(ensemble, NNE.Interfaces.features(test_dataset));
