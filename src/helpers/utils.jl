@@ -91,12 +91,12 @@ function FluxCrossEntropyLossObservable(base_model::Interfaces.AbstractClassific
     labels = Interfaces.labels(dataset)
     onehotlabels = Flux.onehotbatch(labels, 1:num_classes)
 
-    return FluxCrossEntropyLossObservable(model, dataset, onehotlabels)
+    return FluxCrossEntropyLossObservable(base_model, dataset, onehotlabels)
 end
 
 function (obs::FluxCrossEntropyLossObservable)(parameters::AbstractArray)
     new_model = Interfaces.create_from(obs.base_model, parameters)
-    logits = Interfaces.logits(new_model, features)
+    logits = Interfaces.logits(new_model, Interfaces.features(obs.dataset))
     return Flux.logitcrossentropy(logits, obs.onehotlabels)
 end
 
