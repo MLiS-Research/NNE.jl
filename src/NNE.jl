@@ -6,9 +6,10 @@ include("helpers/utils.jl")
 import .Utils
 include("ensembles.jl")
 
+include("experiments/experiments.jl")
+
 include("helpers/problem_generators.jl")
 include("helpers/runner.jl")
-include("helpers/metrics.jl")
 
 include("linear_perceptron/exact_calculation.jl")
 include("linear_perceptron/tps_calculation.jl")
