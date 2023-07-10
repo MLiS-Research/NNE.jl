@@ -119,4 +119,35 @@ function accuracy(true_labels, predicted_labels)
     return sum(true_labels .== predicted_labels) / length(predicted_labels)
 end
 
+
+to_raw(object::DataType) = object
+function to_raw(object)
+    raw_object = Dict{Symbol,Any}()
+    for pname in fieldnames(typeof(object))
+        raw_object[pname] = to_raw(getfield(object, pname))
+    end
+    return raw_object
+end
+function save_to!(results::Dict{Symbol,Any}, object)
+    for pname in fieldnames(typeof(object))
+        if haskey(results, pname)
+            @info "Saving $(pname) from type $(typeof(object)) to results, but already contains the key $(pname). Overwritting."
+        end
+
+        results[pname] = to_raw(getfield(object, pname))
+    end
+    nothing
+end
+
+
+function to_cpu(array::AbstractArray)
+    return deepcopy(array)
+end
+function to_cpu(array::AbstractArray{T}) where {T<:AbstractArray}
+    return [to_cpu(a) for a in array]
+end
+function to_cpu(array::CuArray)
+    return Array(array)
+end
+
 end

@@ -5,26 +5,9 @@ import ..Utils
 import TransitionPathSampling as TPS
 using Logging
 using ProgressBars
+import CUDA: CuArray
 include("config.jl")
 
-to_raw(object::DataType) = object
-function to_raw(object)
-    raw_object = Dict{Symbol,Any}()
-    for pname in propertynames(typeof(object))
-        raw_object[pname] = to_raw(getproperty(object, pname))
-    end
-    return raw_object
-end
-function save_to!(results::Dict{Symbol,Any}, object)
-    for pname in propertynames(typeof(object))
-        if haskey(results, pname)
-            @info "Saving $(pname) from type $(typeof(object)) to results, but already contains the key $(pname). Overwritting."
-        end
-
-        results[pname] = to_raw(getproperty(object, pname))
-    end
-    nothing
-end
 
 function construct_initial_state(trajectory_length, model::Interfaces.AbstractModel)
     params = Interfaces.parameters(model)
@@ -67,18 +50,19 @@ function setup_problem(config::ExperimentConfig, model::Interfaces.AbstractClass
 end
 
 function save_solution!(results, solution::TPS.SimpleSolution)
-    results[:final_state] = deepcopy(TPS.get_current_state(solution))
+    results[:final_state] = Utils.to_cpu(TPS.get_current_state(solution))
     results[:observations] = deepcopy(solution.observations)
 end
 
+
 function run(config::ExperimentConfig, model::Interfaces.AbstractClassificationModel, dataset::Interfaces.AbstractClassificationDataset)
     results = Dict{Symbol,Any}()
-    save_to!(results, config)
+    Utils.save_to!(results, config)
 
     problem = setup_problem(config, model, dataset)
     alg = setup_algorithm(config)
 
-    results[:initial_state] = deepcopy(Interfaces.parameters(model))
+    results[:initial_state] = Utils.to_cpu(Interfaces.parameters(model))
     iter = 1:config.epochs
     if config.use_progress
         iter = ProgressBar(iter)
@@ -88,5 +72,7 @@ function run(config::ExperimentConfig, model::Interfaces.AbstractClassificationM
 
     return results
 end
+
+export run, ExperimentConfig, AlgorithmConfig
 
 end
