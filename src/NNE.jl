@@ -1,6 +1,10 @@
 module NNE
 
-include("interfaces/interfaces.jl")
+include("interfaces.jl")
+import .Interfaces
+include("helpers/utils.jl")
+import .Utils
+include("ensembles.jl")
 
 include("helpers/problem_generators.jl")
 include("helpers/runner.jl")

@@ -4,13 +4,15 @@ import Random
 using Logging
 using Flux
 
-struct ImageDataset{T1,T2}
+struct ImageDataset{T1,T2}<:Interfaces.AbstractClassificationDataset
     features::T1
     labels::T2
     img_size::Tuple{Int,Int}
     num_channels::Int
     name::Symbol
 end
+Interfaces.features(dataset::ImageDataset) = dataset.features
+Interfaces.labels(dataset::ImageDataset) = dataset.labels
 
 Base.@kwdef struct PreprocessConfig{T<:Union{AbstractArray,Set}}
     shuffle::Bool = false

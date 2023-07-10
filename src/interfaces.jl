@@ -1,10 +1,16 @@
+module Interfaces
+
 unimplemented() = error("Unimplemented.")
 
 abstract type AbstractModel end
 parameters(model::AbstractModel) = unimplemented()
+create_from(basemodel::AbstractModel, new_parameters) = unimplemented()
+predict(model::AbstractModel, features) = unimplemented()
 
 abstract type AbstractClassificationModel <: AbstractModel end
-predict(model::AbstractClassificationModel) = unimplemented()
+logits(::AbstractClassificationModel, features) = unimplemented()
+class_type(::AbstractClassificationModel) = unimplemented()
+num_classes(::AbstractClassificationModel) = unimplemented()
 
 abstract type AbstractDataset end
 features(dataset::AbstractDataset) = unimplemented()
@@ -17,8 +23,10 @@ targets(dataset::AbstractRegressionDataset) = unimplemented()
 
 
 abstract type AbstractClassificationEnsemble <: AbstractClassificationModel end
-Base.length(ensemble::AbstractEnsemble) = unimplemented()
+Base.length(ensemble::AbstractClassificationEnsemble) = unimplemented()
 """
 Returns an array of models (subtypes of AbstractModel) representing the ensemble.
 """
-models(ensemble::AbstractEnsemble) = unimplemented()
+models(ensemble::AbstractClassificationEnsemble) = unimplemented()
+
+end

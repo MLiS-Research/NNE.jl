@@ -1,10 +1,18 @@
 using Flux
 
-struct ImageModel{T, RE}
+struct FluxImageModel{T,RE,M} <: Interfaces.AbstractClassificationModel
     parameters::T
     reconstruct_fn::RE
+    model::M
     num_outputs::Int
 end
+Interfaces.parameters(model::FluxImageModel) = model.parameters
+function Interfaces.predict(model::FluxImageModel, features)
+    logits = model.model(features)
+    predictions = Utils.logits_to_predictions(logits)
+    return predictions
+end
+
 
 function generate_image_model(model_name::Symbol; outputs::Int, device=Flux.cpu, seed::Int=948679378, kwargs...)
     previous_state = copy(Random.default_rng())
@@ -12,7 +20,7 @@ function generate_image_model(model_name::Symbol; outputs::Int, device=Flux.cpu,
     model = create_model(Val(model_name); outputs, device, kwargs...)
     copy!(Random.default_rng(), previous_state)
     ps, re = Flux.destructure(model)
-    return ImageModel(ps, re, outputs)
+    return FluxImageModel(ps, re, model, outputs)
 end
 
 # Allows for overriding with custom implementations for different symbols
