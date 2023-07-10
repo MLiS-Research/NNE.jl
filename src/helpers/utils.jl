@@ -110,6 +110,11 @@ function observe!(cache, observable::FluxCrossEntropyLossObservable, state::Abst
     nothing
 end
 
+"""
+Calculates the accuracy of predictions when compared to their true labels.
+
+Output is ormalised between 0 and 1, with 1 representing 100% accuracy.
+"""
 function accuracy(true_labels, predicted_labels)
     return sum(true_labels .== predicted_labels) / length(predicted_labels)
 end
