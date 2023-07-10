@@ -27,9 +27,9 @@ UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 julia = "1"
 
 [extras]
-TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [targets]
 test = ["Test", "SafeTestsets"]

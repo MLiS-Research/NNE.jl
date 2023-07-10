@@ -10,7 +10,7 @@ end
 
 function ClassificationEnsemble(base::Interfaces.AbstractClassificationModel, ensemble_parameters)
     @assert length(ensemble_parameters) > 1 "Must have at least one set of parameters"
-    return ClassificationEnsemble(map(p -> create_from(base, p), ensemble_parameters), Interfaces.num_classes(base), Interfaces.class_type(base))
+    return ClassificationEnsemble(map(p -> Interfaces.create_from(base, p), ensemble_parameters), Interfaces.num_classes(base), Interfaces.class_type(base))
 end
 
 Base.length(ensemble::ClassificationEnsemble) = length(ensemble.models)

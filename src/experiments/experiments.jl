@@ -62,7 +62,7 @@ function run(config::ExperimentConfig, model::Interfaces.AbstractClassificationM
     problem = setup_problem(config, model, dataset)
     alg = setup_algorithm(config)
 
-    results[:initial_state] = Utils.to_cpu(Interfaces.parameters(model))
+    results[:initial_state] = Utils.to_cpu(TPS.get_initial_state(problem))
     iter = 1:config.epochs
     if config.use_progress
         iter = ProgressBar(iter)

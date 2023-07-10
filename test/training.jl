@@ -10,7 +10,6 @@ using TestItems
 
     Random.seed!(1234) # Use a random seed
     for device in [Flux.cpu, Flux.gpu]
-        device = Flux.cpu
         model = generate_image_model(:MNIST; device, outputs=10)
         config = PreprocessConfig(shuffle=true, max_samples_per_label=16)
         dataset = load_dataset(:MNIST; split=SplitTest, device, config)
@@ -33,7 +32,6 @@ end
 
     Random.seed!(1234) # Use a random seed
     for device in [Flux.cpu, Flux.gpu]
-        device = Flux.cpu
         model = generate_image_model(:MNIST; device, outputs=10)
         config = PreprocessConfig(shuffle=true, max_samples_per_label=16)
         dataset = load_dataset(:MNIST; split=SplitTest, device, config)
