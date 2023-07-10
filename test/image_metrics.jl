@@ -10,7 +10,7 @@ using TestItems
     model = generate_image_model(:MNIST; device, outputs = 10)
     config = PreprocessConfig(shuffle=true, max_samples_per_label=16)
     dataset = load_dataset(:MNIST; split=SplitTest, device, config)
-    loss_fn = NNE.ImageClassification.generate_cross_entropy_loss_fn(dataset, model)
+    loss_fn = NNE.ImageClassification.ImageCrossEntropyLossObservable(model, dataset)
     
     loss_single = loss_fn(model.parameters)
     trajectory_length = 4
@@ -25,7 +25,7 @@ end
     gpu_model = generate_image_model(:MNIST; device, outputs = 10)
     config = PreprocessConfig(shuffle=true, max_samples_per_label=16)
     gpu_dataset = load_dataset(:MNIST; split=SplitTest, device, config)
-    gpu_loss_fn = NNE.ImageClassification.generate_cross_entropy_loss_fn(gpu_dataset, gpu_model)
+    gpu_loss_fn = NNE.ImageClassification.ImageCrossEntropyLossObservable(gpu_model, gpu_dataset)
     
     gpu_loss_single = gpu_loss_fn(gpu_model.parameters)
     trajectory_length = 4
@@ -36,7 +36,7 @@ end
     device = Flux.cpu
     model = generate_image_model(:MNIST; device, outputs = 10)
     dataset = load_dataset(:MNIST; split=SplitTest, device, config)
-    loss_fn = NNE.ImageClassification.generate_cross_entropy_loss_fn(dataset, model)
+    loss_fn = NNE.ImageClassification.ImageCrossEntropyLossObservable(model, dataset)
 
     loss_single = loss_fn(model.parameters)
 

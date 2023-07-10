@@ -1,32 +1,31 @@
-function generate_ensemble_predictions_fn(dataset::ImageDataset, model::ImageModel)
-    function get_predictions(trajectory::AbstractArray{T}) where {T<:AbstractArray}
-        total_votes = similar(dataset.labels, Int64, (model.num_outputs, length(dataset.labels)))
-        fill!(total_votes, zero(eltype(total_votes)))
-        for parameters in trajectory
-            flux_model = model.reconstruct_fn(parameters)
-            logits = flux_model(dataset.features)
-            predictions = logits_to_predictions(logits)
-            vote_for_label!(total_votes, predictions)
-        end
-        ensemble_predictions = logits_to_predictions(total_votes) # Votes act like logits, where we just do an argmax
-        return ensemble_predictions
-    end
-    function get_predictions(parameters::AbstractArray)
+struct ImagePredictionsFn{IM <: ImageModel, ID <: ImageDataset}
+    base_model::IM
+    dataset::ID
+end
+
+function (preds_fn::ImagePredictionsFn)(ensemble_parameters::AbstractArray{T}) where {T<:AbstractArray}
+    model = preds_fn.base_model
+    dataset = preds_fn.dataset
+    total_votes = similar(dataset.labels, Int64, (model.num_outputs, length(dataset.labels)))
+    fill!(total_votes, zero(eltype(total_votes)))
+    for parameters in ensemble_parameters
         flux_model = model.reconstruct_fn(parameters)
         logits = flux_model(dataset.features)
         predictions = logits_to_predictions(logits)
-        return predictions
+        vote_for_label!(total_votes, predictions)
     end
-    return get_predictions
+    ensemble_predictions = logits_to_predictions(total_votes) # Votes act like logits, where we just do an argmax
+    return ensemble_predictions
 end
-function generate_ensemble_accuracy_fn(dataset::ImageDataset, model::ImageModel)
-    get_predictions_fn = generate_ensemble_predictions_fn(dataset, model)
-    function get_accuracy(ps)
-        preds = get_predictions_fn(ps)
-        return sum(preds .== dataset.labels) / length(dataset.labels)
-    end
-    return get_accuracy
+function (preds_fn::ImagePredictionsFn)(parameters::AbstractArray)
+    model = preds_fn.base_model
+    dataset = preds_fn.dataset
+    flux_model = model.reconstruct_fn(parameters)
+    logits = flux_model(dataset.features)
+    predictions = logits_to_predictions(logits)
+    return predictions
 end
+
 using CUDA
 function vote_for_label!(total_votes::AbstractArray, predictions::AbstractArray)
     @inbounds for (i, p) in enumerate(predictions)

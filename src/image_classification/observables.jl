@@ -6,7 +6,7 @@ struct ImageCrossEntropyLossObservable{IM <: ImageModel, ID <: ImageDataset, OHL
     onehotlabels::OHL
 end
 
-function ImageCrossEntropyLossObservable(dataset::ImageDataset, model::ImageModel)
+function ImageCrossEntropyLossObservable(model::ImageModel, dataset::ImageDataset)
     onehotlabels = Flux.onehotbatch(dataset.labels, 1:model.num_outputs)
 
     return ImageCrossEntropyLossObservable(model, dataset, onehotlabels)
