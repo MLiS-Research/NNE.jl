@@ -17,6 +17,16 @@ Base.length(ensemble::ClassificationEnsemble) = length(ensemble.models)
 Interfaces.models(ensemble::ClassificationEnsemble) = ensemble.models
 Interfaces.class_type(ensemble::ClassificationEnsemble) = ensemble.class_type
 Interfaces.num_classes(ensemble::ClassificationEnsemble) = ensemble.num_classes
+Interfaces.parameters(ensemble::ClassificationEnsemble) = [Interfaces.parameters(model) for model in Interfaces.models(ensemble)]
+function Interfaces.create_from(ensemble::ClassificationEnsemble, new_trajectory)
+    return ClassificationEnsemble(
+        map(zip(ensemble.models, new_trajectory)) do (model, parameters)
+            Interfaces.create_from(model, parameters)
+        end,
+        ensemble.num_classes,
+        ensemble.class_type
+    )
+end
 
 function Interfaces.predict(ensemble::Interfaces.AbstractClassificationEnsemble, features)
     class_type = Interfaces.class_type(ensemble)
