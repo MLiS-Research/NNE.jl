@@ -5,6 +5,7 @@ struct FluxImageModel{T,RE,M} <: Interfaces.AbstractClassificationModel
     reconstruct_fn::RE
     model::M
     num_outputs::Int
+    class_type::DataType
 end
 Interfaces.parameters(model::FluxImageModel) = model.parameters
 function Interfaces.predict(model::FluxImageModel, features)
@@ -12,15 +13,29 @@ function Interfaces.predict(model::FluxImageModel, features)
     predictions = Utils.logits_to_predictions(logits)
     return predictions
 end
+function Interfaces.create_from(model::FluxImageModel, parameters)
+    return FluxImageModel(
+        parameters,
+        model.reconstruct_fn,
+        model.reconstruct_fn(parameters),
+        model.num_outputs,
+        model.class_type
+    )
+end
+function Interfaces.logits(model::FluxImageModel, features)
+    return model.model(features)
+end
+Interfaces.class_type(model::FluxImageModel) = model.class_type
+Interfaces.num_classes(model::FluxImageModel) = model.num_outputs
 
 
-function generate_image_model(model_name::Symbol; outputs::Int, device=Flux.cpu, seed::Int=948679378, kwargs...)
+function generate_image_model(model_name::Symbol; outputs::Int, class_type=Int, device=Flux.cpu, seed::Int=948679378, kwargs...)
     previous_state = copy(Random.default_rng())
     Random.seed!(seed)
     model = create_model(Val(model_name); outputs, device, kwargs...)
     copy!(Random.default_rng(), previous_state)
     ps, re = Flux.destructure(model)
-    return FluxImageModel(ps, re, model, outputs)
+    return FluxImageModel(ps, re, model, outputs, class_type)
 end
 
 # Allows for overriding with custom implementations for different symbols
