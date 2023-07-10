@@ -17,4 +17,12 @@ labels(dataset::AbstractClassificationDataset) = unimplemented()
 abstract type AbstractRegressionDataset <: AbstractDataset end
 targets(dataset::AbstractRegressionDataset) = unimplemented()
 
+
+abstract type AbstractClassificationEnsemble <: AbstractClassificationModel end
+Base.length(ensemble::AbstractEnsemble) = unimplemented()
+"""
+Returns an array of models (subtypes of AbstractModel) representing the ensemble.
+"""
+models(ensemble::AbstractEnsemble) = unimplemented()
+
 end
