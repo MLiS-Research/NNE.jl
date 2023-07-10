@@ -1,8 +1,10 @@
 module NNE
 
+include("interfaces/interfaces.jl")
+
 include("helpers/problem_generators.jl")
 include("helpers/runner.jl")
-
+include("helpers/metrics.jl")
 
 include("linear_perceptron/exact_calculation.jl")
 include("linear_perceptron/tps_calculation.jl")
