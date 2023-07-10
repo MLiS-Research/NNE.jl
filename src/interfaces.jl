@@ -28,5 +28,6 @@ Base.length(ensemble::AbstractClassificationEnsemble) = unimplemented()
 Returns an array of models (subtypes of AbstractModel) representing the ensemble.
 """
 models(ensemble::AbstractClassificationEnsemble) = unimplemented()
+logits(::AbstractClassificationEnsemble, features) = error("`logits` function is unsupported by ensembles.")
 
 end
