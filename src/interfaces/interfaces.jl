@@ -1,5 +1,3 @@
-module Interfaces
-
 unimplemented() = error("Unimplemented.")
 
 abstract type AbstractModel end
@@ -24,5 +22,3 @@ Base.length(ensemble::AbstractEnsemble) = unimplemented()
 Returns an array of models (subtypes of AbstractModel) representing the ensemble.
 """
 models(ensemble::AbstractEnsemble) = unimplemented()
-
-end
