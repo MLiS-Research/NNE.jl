@@ -6,6 +6,8 @@ include("helpers/utils.jl")
 import .Utils
 include("ensembles.jl")
 
+include("callbacks/callbacks.jl")
+
 include("experiments/experiments.jl")
 
 include("helpers/problem_generators.jl")
