@@ -64,7 +64,7 @@ Base.@kwdef struct ValidationLossMetricGatherer{D<:Interfaces.AbstractClassifica
     dataset::D
     frequency::Int = 1
 end
-Tensorboard.tag(::ValidationLossMetricGatherer) = "validation/accuracy"
+Tensorboard.tag(::ValidationLossMetricGatherer) = "validation/loss"
 Tensorboard.frequency(m::ValidationLossMetricGatherer) = m.frequency
 function Tensorboard.gather(gatherer::ValidationLossMetricGatherer, deps::CB.SolveDependencies)
     state = TPS.get_current_state(deps.solution)

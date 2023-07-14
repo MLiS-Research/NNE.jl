@@ -9,7 +9,7 @@ struct TBLoggerCallback{T} <: CB.AbstractCallback
     metric_gatherers::T
 end
 
-function TBLoggerCallback(path, metrics...; conflict_option=tb_append)
+function TBLoggerCallback(path, metrics...; conflict_option=tb_increment)
     logger = TBLogger(path, conflict_option)
     return TBLoggerCallback(logger, Tuple(m for m in metrics))
 end
@@ -21,7 +21,8 @@ frequency(gatherer::AbstractMetricGatherer) = 1
 
 
 function log_metric!(logger::TBLogger, gatherer::AbstractMetricGatherer, deps::CB.SolveDependencies)
-    TensorBoardLogger.log_value(logger, tag(gatherer), gather(gatherer, deps))
+    current_epoch = Int(deps.iterator_state)
+    TensorBoardLogger.log_value(logger, tag(gatherer), gather(gatherer, deps); step=current_epoch)
     nothing
 end
 
@@ -29,7 +30,8 @@ end
 function CB.run(cb::TBLoggerCallback, deps::CB.SolveDependencies)
     current_epoch = Int(deps.iterator_state)
     for gatherer in cb.metric_gatherers
-        if current_epoch % frequency(gatherer) == 0 # throttle logging
+        # TODO: Make saving the first output optional
+        if current_epoch == 1 || current_epoch % frequency(gatherer) == 0 # throttle logging
             log_metric!(cb.logger, gatherer, deps)
         end
     end
