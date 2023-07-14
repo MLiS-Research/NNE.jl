@@ -99,6 +99,9 @@ function (obs::FluxCrossEntropyLossObservable)(parameters::AbstractArray)
     logits = Interfaces.logits(new_model, Interfaces.features(obs.dataset))
     return Flux.logitcrossentropy(logits, obs.onehotlabels)
 end
+function (obs::FluxCrossEntropyLossObservable)(states::AbstractArray{<:AbstractArray})
+    return [obs(s) for s in states]
+end
 
 function observe(observable::FluxCrossEntropyLossObservable, state::AbstractArray)
     return observable(state)
