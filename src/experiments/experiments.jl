@@ -57,7 +57,7 @@ end
 
 function construct_callbacks(config::ExperimentConfig, model, train_dataset, validation_dataset)
     # Extend with saving callbacks
-    if isnothing(config.tensorboard_logging_config)
+    if !isnothing(config.tensorboard_logging_config)
         cb = construct_tb_callback(config, validation_dataset)
         return cb
     end
@@ -69,27 +69,23 @@ function _train_metrics(config::ExperimentConfig)
     tb_config::TensorboardLoggingConfig = config.tensorboard_logging_config
     loss_metric = tb_config.train_loss_frequency == 0 ? nothing : CB.TrainingLossMetricGatherer(modifier, tb_config.train_loss_frequency)
     accuracy_metric = tb_config.train_accuracy_frequency == 0 ? nothing : CB.TrainingAccuracyMetricGatherer(tb_config.train_accuracy_frequency)
-    return loss_metric, accuracy_metric
+    return filter(!isnothing, (loss_metric, accuracy_metric))
 end
 function _validation_metrics(config::ExperimentConfig, dataset)
     tb_config::TensorboardLoggingConfig = config.tensorboard_logging_config
     loss_metric = tb_config.validation_loss_frequency == 0 ? nothing : CB.ValidationLossMetricGatherer(dataset, tb_config.validation_loss_frequency)
     accuracy_metric = tb_config.validation_accuracy_frequency == 0 ? nothing : CB.ValidationAccuracyMetricGatherer(dataset, tb_config.validation_accuracy_frequency)
-    return loss_metric, accuracy_metric
+    return filter(!isnothing, (loss_metric, accuracy_metric))
 end
 function construct_tb_metrics(config::ExperimentConfig, ::Nothing)
-    metrics = filter(!isnothing, _train_metrics(config))
-    return metrics
+    return _train_metrics(config)
 end
 function construct_tb_metrics(config::ExperimentConfig, validation_dataset::Interfaces.AbstractClassificationDataset)
-    train_metrics = construct_tb_callback(config, nothing)
-    validation_metrics = filter(!isnothing, _validation_metrics(config.tensorboard_logging_config, validation_dataset))
+    train_metrics = construct_tb_metrics(config, nothing)
+    validation_metrics = _validation_metrics(config, validation_dataset)
     return (train_metrics..., validation_metrics...)
 end
 function construct_tb_callback(config::ExperimentConfig, validation_dataset)
-    if isnothing(config.tensorboard_logging_config)
-        return nothing
-    end
     metrics = construct_tb_metrics(config, validation_dataset)
     if length(metrics) == 0
         return nothing

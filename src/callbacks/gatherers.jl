@@ -25,9 +25,9 @@ Base.@kwdef struct TrainingLossMetricGatherer <: Tensorboard.AbstractMetricGathe
     modifier::Float32 = 1.0f0
     frequency::Int = 1
 end
-tag(::TrainingLossMetricGatherer) = "train/loss"
-frequency(m::TrainingLossMetricGatherer) = m.frequency
-function gather(gatherer::TrainingLossMetricGatherer, deps::CB.SolveDependencies)
+Tensorboard.tag(::TrainingLossMetricGatherer) = "train/loss"
+Tensorboard.frequency(m::TrainingLossMetricGatherer) = m.frequency
+function Tensorboard.gather(gatherer::TrainingLossMetricGatherer, deps::CB.SolveDependencies)
     return _get_loss(deps.cache) * gatherer.modifier
 end
 _get_loss(cache::MH.AbstractMetropolisHastingsCache) = MH.get_last_observation(cache)
@@ -36,9 +36,9 @@ _get_loss(cache) = error("Cache does not have an implemented method for retrievi
 Base.@kwdef struct TrainingAccuracyMetricGatherer <: Tensorboard.AbstractMetricGatherer
     frequency::Int = 1
 end
-tag(::TrainingAccuracyMetricGatherer) = "train/accuracy"
-frequency(m::TrainingAccuracyMetricGatherer) = m.frequency
-function gather(::TrainingAccuracyMetricGatherer, deps::CB.SolveDependencies)
+Tensorboard.tag(::TrainingAccuracyMetricGatherer) = "train/accuracy"
+Tensorboard.frequency(m::TrainingAccuracyMetricGatherer) = m.frequency
+function Tensorboard.gather(::TrainingAccuracyMetricGatherer, deps::CB.SolveDependencies)
     state = TPS.get_current_state(deps.solution)
     obs = TPS.get_observable(deps.problem)
     base_model = _get_base_model(obs)
@@ -50,9 +50,9 @@ Base.@kwdef struct ValidationAccuracyMetricGatherer{D<:Interfaces.AbstractClassi
     dataset::D
     frequency::Int = 1
 end
-tag(::ValidationAccuracyMetricGatherer) = "validation/accuracy"
-frequency(m::ValidationAccuracyMetricGatherer) = m.frequency
-function gather(gatherer::ValidationAccuracyMetricGatherer, deps::CB.SolveDependencies)
+Tensorboard.tag(::ValidationAccuracyMetricGatherer) = "validation/accuracy"
+Tensorboard.frequency(m::ValidationAccuracyMetricGatherer) = m.frequency
+function Tensorboard.gather(gatherer::ValidationAccuracyMetricGatherer, deps::CB.SolveDependencies)
     state = TPS.get_current_state(deps.solution)
     obs = TPS.get_observable(deps.problem)
     base_model = _get_base_model(obs)
@@ -64,9 +64,9 @@ Base.@kwdef struct ValidationLossMetricGatherer{D<:Interfaces.AbstractClassifica
     dataset::D
     frequency::Int = 1
 end
-tag(::ValidationLossMetricGatherer) = "validation/accuracy"
-frequency(m::ValidationLossMetricGatherer) = m.frequency
-function gather(gatherer::ValidationLossMetricGatherer, deps::CB.SolveDependencies)
+Tensorboard.tag(::ValidationLossMetricGatherer) = "validation/accuracy"
+Tensorboard.frequency(m::ValidationLossMetricGatherer) = m.frequency
+function Tensorboard.gather(gatherer::ValidationLossMetricGatherer, deps::CB.SolveDependencies)
     state = TPS.get_current_state(deps.solution)
     obs = TPS.get_observable(deps.problem)
     base_model = _get_base_model(obs)
