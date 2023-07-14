@@ -29,7 +29,7 @@ end
 function CB.run(cb::TBLoggerCallback, deps::CB.SolveDependencies)
     current_epoch = Int(deps.iterator_state)
     for gatherer in cb.metric_gatherers
-        if current_epoch % frequency(gatherer) # throttle logging
+        if current_epoch % frequency(gatherer) == 0 # throttle logging
             log_metric!(cb.logger, gatherer, deps)
         end
     end

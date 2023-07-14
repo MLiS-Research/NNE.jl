@@ -92,7 +92,7 @@ function construct_tb_callback(config::ExperimentConfig, validation_dataset)
     end
 
     tb_config::TensorboardLoggingConfig = config.tensorboard_logging_config
-    cb = CB.TBLoggerCallback(tb_config.path, metrics)
+    cb = CB.TBLoggerCallback(tb_config.path, metrics...)
     return cb
 end
 
