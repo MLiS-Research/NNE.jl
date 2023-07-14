@@ -55,7 +55,7 @@ function save_solution!(results, solution::TPS.SimpleSolution)
     results[:observations] = deepcopy(solution.observations)
 end
 
-function construct_callbacks(config::ExperimentConfig, model::Interfaces.AbstractClassificationModel, train_dataset::Interfaces.AbstractClassificationDataset, validation_dataset::Interfaces.AbstractClassificationDataset)
+function construct_callbacks(config::ExperimentConfig, model, train_dataset, validation_dataset)
     # Extend with saving callbacks
     if isnothing(config.tensorboard_logging_config)
         cb = construct_tb_callback(config, validation_dataset)
@@ -71,22 +71,25 @@ function _train_metrics(config::ExperimentConfig)
     accuracy_metric = tb_config.train_accuracy_frequency == 0 ? nothing : CB.TrainingAccuracyMetricGatherer(tb_config.train_accuracy_frequency)
     return loss_metric, accuracy_metric
 end
-function _validation_metrics(config::TensorboardLoggingConfig, dataset)
-    loss_metric = config.validation_loss_frequency == 0 ? nothing : CB.ValidationLossMetricGatherer(dataset, config.validation_loss_frequency)
-    accuracy_metric = config.validation_accuracy_frequency == 0 ? nothing : CB.ValidationAccuracyMetricGatherer(dataset, config.validation_accuracy_frequency)
+function _validation_metrics(config::ExperimentConfig, dataset)
+    tb_config::TensorboardLoggingConfig = config.tensorboard_logging_config
+    loss_metric = tb_config.validation_loss_frequency == 0 ? nothing : CB.ValidationLossMetricGatherer(dataset, tb_config.validation_loss_frequency)
+    accuracy_metric = tb_config.validation_accuracy_frequency == 0 ? nothing : CB.ValidationAccuracyMetricGatherer(dataset, tb_config.validation_accuracy_frequency)
     return loss_metric, accuracy_metric
 end
-function construct_tb_metrics(config::TensorboardLoggingConfig, ::Nothing)
-    loss_metric, accuracy_metric = _train_metrics(config::ExperimentConfig)
-    metrics = filter(!isnothing, (loss_metric, accuracy_metric))
+function construct_tb_metrics(config::ExperimentConfig, ::Nothing)
+    metrics = filter(!isnothing, _train_metrics(config))
     return metrics
 end
-function construct_tb_metrics(config::TensorboardLoggingConfig, validation_dataset::Interfaces.AbstractClassificationDataset)
+function construct_tb_metrics(config::ExperimentConfig, validation_dataset::Interfaces.AbstractClassificationDataset)
     train_metrics = construct_tb_callback(config, nothing)
     validation_metrics = filter(!isnothing, _validation_metrics(config.tensorboard_logging_config, validation_dataset))
     return (train_metrics..., validation_metrics...)
 end
-function construct_tb_callback(config::ExperimentConfig, validation_dataset::Interfaces.AbstractClassificationDataset)
+function construct_tb_callback(config::ExperimentConfig, validation_dataset)
+    if isnothing(config.tensorboard_logging_config)
+        return nothing
+    end
     metrics = construct_tb_metrics(config, validation_dataset)
     if length(metrics) == 0
         return nothing
@@ -123,6 +126,6 @@ function run(config::ExperimentConfig,
     return results
 end
 
-export run, ExperimentConfig, AlgorithmConfig
+export run, ExperimentConfig, AlgorithmConfig, TensorboardLoggingConfig
 
 end

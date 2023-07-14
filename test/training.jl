@@ -15,7 +15,7 @@ using TestItems
         dataset = load_dataset(:MNIST; split=SplitTest, device, config)
 
         alg_config = AlgorithmConfig(0.0, Float32(0.05), 0.25) # Always accept
-        experiment_config = ExperimentConfig(1, 10, alg_config, false)
+        experiment_config = ExperimentConfig(1, 10, alg_config, false, nothing)
 
         results = NNE.Experiments.run(experiment_config, model, dataset)
         observations = results[:observations]
@@ -38,7 +38,7 @@ end
 
         alg_config = AlgorithmConfig(0.0, Float32(0.05), 0.25) # Always accept
         trajectory_length = 4
-        experiment_config = ExperimentConfig(trajectory_length, 10, alg_config, false)
+        experiment_config = ExperimentConfig(trajectory_length, 10, alg_config, false, nothing)
 
         results = NNE.Experiments.run(experiment_config, model, dataset)
         observations = results[:observations]
