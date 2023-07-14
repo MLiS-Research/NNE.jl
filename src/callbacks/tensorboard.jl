@@ -7,12 +7,11 @@ import TransitionPathSampling.Callbacks as CB
 struct TBLoggerCallback{T} <: CB.AbstractCallback
     logger::TBLogger
     metric_gatherers::T
-    frequency::Int
 end
 
 function TBLoggerCallback(path, metrics...; conflict_option=tb_append)
     logger = TBLogger(path, conflict_option)
-    return TBLoggerCallback(logger, Tuple(m for m in metrics), frequency)
+    return TBLoggerCallback(logger, Tuple(m for m in metrics))
 end
 
 abstract type AbstractMetricGatherer end
