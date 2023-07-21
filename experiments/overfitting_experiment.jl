@@ -17,7 +17,7 @@ function run_experiment(config, trial_id)
     param_frac_changed = config[:param_frac_changed]
     use_progress = haskey(config, :use_progress) ? config[:use_progress] : false
     log_dirname = haskey(config, :logging_dirname) ? config[:logging_dirname] : "overfitting"
-    time_identifier = replace(string(now()), ":" => "-")[begin:end-4]
+    time_identifier = replace(string(now()), ":" => "-")[begin:end-4] * "-id-$(string(rand(100000:999999)))"
 
     Random.seed!(seed) # Use a random seed
     device = Flux.gpu

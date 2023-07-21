@@ -15,7 +15,7 @@ config = Dict{Symbol,Any}(
     :device => :gpu,
     :epochs => 40000000,
     :seed => 46938723,
-    :use_progress => true,
+    :use_progress => false,
     :logging_dirname => "cifar_nne"
 )
 
@@ -30,4 +30,4 @@ db = open_db("experiments.db", joinpath(pwd(), "results", "overfitting"))
 
 experiment = restore_from_db(db, experiment)
 
-@execute experiment db DistributedMode true
+@execute experiment db DistributedMode false
