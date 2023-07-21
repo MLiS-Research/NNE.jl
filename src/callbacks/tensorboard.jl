@@ -9,7 +9,7 @@ struct TBLoggerCallback{T} <: CB.AbstractCallback
     metric_gatherers::T
 end
 
-function TBLoggerCallback(path, metrics...; conflict_option=tb_increment)
+function TBLoggerCallback(path, metrics...; conflict_option=tb_append)
     logger = TBLogger(path, conflict_option)
     return TBLoggerCallback(logger, Tuple(m for m in metrics))
 end
@@ -18,6 +18,8 @@ abstract type AbstractMetricGatherer end
 gather(gatherer::AbstractMetricGatherer, deps::CB.SolveDependencies) = error("Unimplemented")
 tag(gatherer::AbstractMetricGatherer) = error("Unimplemented")
 frequency(gatherer::AbstractMetricGatherer) = 1
+
+Base.close(cb::TBLoggerCallback) = close(cb.logger)
 
 
 function log_metric!(logger::TBLogger, gatherer::AbstractMetricGatherer, deps::CB.SolveDependencies)

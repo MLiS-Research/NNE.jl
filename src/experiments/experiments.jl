@@ -93,6 +93,11 @@ function construct_tb_callback(config::ExperimentConfig, validation_dataset)
 
     tb_config::TensorboardLoggingConfig = config.tensorboard_logging_config
     cb = CB.TBLoggerCallback(tb_config.path, metrics...)
+    # Write hyperparameters to the file
+    hparams = extract_hparams(config)
+    metric_tags = [CB.Tensorboard.tag(m) for m in metrics]
+    CB.Tensorboard.TensorBoardLogger.write_hparams!(cb.logger, hparams, metric_tags)
+
     return cb
 end
 
@@ -118,6 +123,8 @@ function run(config::ExperimentConfig,
 
     solution = TPS.solve(problem, alg, iter; cb=cb)
     save_solution!(results, solution)
+
+    close(cb)
 
     return results
 end

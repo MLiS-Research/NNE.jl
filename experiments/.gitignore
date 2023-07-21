@@ -1,3 +1,4 @@
 experiments/
 julia-*-*-*.out
 julia_sysimage.so
+*.db

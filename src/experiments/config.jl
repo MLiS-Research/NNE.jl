@@ -17,3 +17,13 @@ struct ExperimentConfig{AC<:AlgorithmConfig}
     use_progress::Bool
     tensorboard_logging_config::Union{Nothing,TensorboardLoggingConfig}
 end
+
+function extract_hparams(config::ExperimentConfig)
+    return Dict{String,Any}(
+        "trajectory_length" => config.trajectory_length,
+        "epochs" => config.epochs,
+        "bias" => config.algorithm_config.bias,
+        "sigma" => config.algorithm_config.sigma,
+        "parameter_perturb_fraction" => config.algorithm_config.parameter_perturb_fraction
+    )
+end
