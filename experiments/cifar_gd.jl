@@ -34,16 +34,6 @@ y = dataset.labels
 y_onehot = Flux.onehotbatch(y, 1:10)
 
 m = model.model
-opt = Flux.Adam()
-function create_loss(model)
-    function loss(x, y)
-        logits = model(x)
-        return Flux.logitcrossentropy(logits, y)
-    end
-    return loss
-end
-
-loss = create_loss(m)
 
 function create_accuracy_fn(model)
     function acc(x, y)
