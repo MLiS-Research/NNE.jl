@@ -13,7 +13,7 @@ epochs = 1000
 use_progress = true
 logging_dir = "cifar_gd"
 config = Dict{Symbol,Any}(
-    :samples_per_label => 200,
+    :samples_per_label => 20,
     :dataset_name => dataset_name,
     :device => :gpu,
     :epochs => epochs,
@@ -65,7 +65,7 @@ function train_model!(model, loader, epochs, validation_gpu_features, validation
                 Flux.logitcrossentropy(y_hat, y)
             end
             Flux.update!(optim, model, grads[1])
-            num_samples += length(y)
+            num_samples += 1
             total_loss += loss
         end
         push!(losses, total_loss / num_samples)  # logging, outside gradient context
@@ -113,7 +113,20 @@ function create_ensemble(base_model, flux_models)
     return ensemble
 end
 
-gd_ensemble = create_ensemble(model, best_models);
+is_loading = false
+if is_loading
+    BSON.@load "results/gd_data_cifar10.bson" parameters infos
+    gd_ensemble = NNE.Ensembles.ClassificationEnsemble(model, Flux.gpu.(parameters))
+else
+    gd_ensemble = create_ensemble(model, best_models)
+end
+
+is_saving = false
+if is_saving
+    parameters = Flux.cpu.([m.parameters for m in gd_ensemble.models])
+    infos = [Dict{Symbol,Any}(:accuracies => i[:accuracies], :losses => i[:losses] .* 64) for i in training_infos]
+    BSON.@save "results/gd_data_cifar10.bson" parameters infos
+end
 
 gd_ensemble_predictions = NNE.Interfaces.predict(gd_ensemble, validation_dataset.features);
 gd_ensemble_accuracy = sum(gd_ensemble_predictions .== validation_dataset.labels) / length(validation_dataset.labels)
