@@ -42,37 +42,78 @@ function create_accuracy_fn(model)
         return sum(preds .== y) / length(y) * 100
     end
 end
-acc_fn = create_accuracy_fn(m)
+
 
 
 loader = Flux.DataLoader((X, y_onehot), batchsize=64, shuffle=true);
-# 16-element DataLoader with first element: (2×64 Matrix{Float32}, 2×64 OneHotMatrix)
 
-optim = Flux.setup(Flux.Adam(0.0001), m);  # will store optimiser momentum, etc.
-
-# Training loop, using the whole data set 1000 times:
-
-validation_gpu_features = validation_dataset.features;
-validation_cpu_labels = Array(validation_dataset.labels);
-begin
+function train_model!(model, loader, epochs, validation_gpu_features, validation_cpu_labels; lr=0.001, use_progress=true, validation_freq=25)
+    acc_fn = create_accuracy_fn(model)
+    best_model = nothing
+    best_accuracy = -Inf32
     losses = Float32[]
     accuracies = Float64[]
-    iter = ProgressBar(1:epochs)
+    iter = use_progress ? ProgressBar(1:epochs) : (1:epochs)
+    optim = Flux.setup(Flux.Adam(lr), model)  # will store optimiser momentum, etc.
     for epoch in iter
+        total_loss = 0.0
+        num_samples = 0
         for (x, y) in loader
-            loss, grads = Flux.withgradient(m) do _m
+            loss, grads = Flux.withgradient(model) do _m
                 # Evaluate model and loss inside gradient context:
                 y_hat = _m(x)
                 Flux.logitcrossentropy(y_hat, y)
             end
-            Flux.update!(optim, m, grads[1])
-            push!(losses, loss)  # logging, outside gradient context
+            Flux.update!(optim, model, grads[1])
+            num_samples += length(y)
+            total_loss += loss
         end
-        
-        if epoch % 10 == 0
+        push!(losses, total_loss / num_samples)  # logging, outside gradient context
+
+        if epoch % validation_freq == 0
             accuracy = acc_fn(validation_gpu_features, validation_cpu_labels)
-            set_multiline_postfix(iter, "Accuracy: $(round(accuracy, sigdigits=4))%\nLoss: $(round(last(losses), sigdigits=4))")
+            if use_progress
+                set_multiline_postfix(iter, "Accuracy: $(round(accuracy, sigdigits=4))%\nLoss: $(round(last(losses), sigdigits=4))")
+            end
+            if accuracy > best_accuracy
+                best_accuracy = accuracy
+                best_model = deepcopy(model)
+            end
             push!(accuracies, accuracy)
         end
     end
+    info = Dict{Symbol,Any}(
+        :best_model => best_model,
+        :losses => losses,
+        :accuracies => accuracies
+    )
+    return best_model, info
 end
+
+
+validation_gpu_features = validation_dataset.features;
+validation_cpu_labels = Array(validation_dataset.labels);
+num_models = 96;
+seeds = [(Int(rand(UInt32)) % 232304 + 1233) for _ in 1:num_models];
+models = [generate_image_model(dataset_name; device, outputs=10, seed=s) for s in seeds];
+
+training_results = map(ProgressBar(models)) do m
+    return train_model!(m.model, loader, 200, validation_gpu_features, validation_cpu_labels; lr=0.001, use_progress=false)
+end;
+best_models = [r[1] for r in training_results];
+training_infos = [r[2] for r in training_results];
+best_accuracies = [maximum(info[:accuracies]) for info in training_infos]
+
+function create_ensemble(base_model, flux_models)
+    parameters = map(flux_models) do m
+        ps, _ = Flux.destructure(m)
+        return ps
+    end
+    ensemble = NNE.Ensembles.ClassificationEnsemble(base_model, parameters)
+    return ensemble
+end
+
+gd_ensemble = create_ensemble(model, best_models);
+
+gd_ensemble_predictions = NNE.Interfaces.predict(gd_ensemble, validation_dataset.features);
+gd_ensemble_accuracy = sum(gd_ensemble_predictions .== validation_dataset.labels) / length(validation_dataset.labels)
