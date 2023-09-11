@@ -55,10 +55,10 @@ function save_solution!(results, solution::TPS.SimpleSolution)
     results[:observations] = deepcopy(solution.observations)
 end
 
-function construct_callbacks(config::ExperimentConfig, model, train_dataset, validation_dataset)
+function construct_callbacks(config::ExperimentConfig, model, train_dataset, test_dataset)
     # Extend with saving callbacks
     if !isnothing(config.tensorboard_logging_config)
-        cb = construct_tb_callback(config, validation_dataset)
+        cb = construct_tb_callback(config, test_dataset)
         return cb
     end
 
@@ -80,13 +80,13 @@ end
 function construct_tb_metrics(config::ExperimentConfig, ::Nothing)
     return _train_metrics(config)
 end
-function construct_tb_metrics(config::ExperimentConfig, validation_dataset::Interfaces.AbstractClassificationDataset)
+function construct_tb_metrics(config::ExperimentConfig, test_dataset::Interfaces.AbstractClassificationDataset)
     train_metrics = construct_tb_metrics(config, nothing)
-    validation_metrics = _validation_metrics(config, validation_dataset)
+    validation_metrics = _validation_metrics(config, test_dataset)
     return (train_metrics..., validation_metrics...)
 end
-function construct_tb_callback(config::ExperimentConfig, validation_dataset)
-    metrics = construct_tb_metrics(config, validation_dataset)
+function construct_tb_callback(config::ExperimentConfig, test_dataset)
+    metrics = construct_tb_metrics(config, test_dataset)
     if length(metrics) == 0
         return nothing
     end
@@ -105,7 +105,7 @@ end
 function run(config::ExperimentConfig,
     model::Interfaces.AbstractClassificationModel,
     dataset::Interfaces.AbstractClassificationDataset;
-    validation_dataset::Union{Nothing,Interfaces.AbstractClassificationDataset}=nothing
+    test_dataset::Union{Nothing,Interfaces.AbstractClassificationDataset}=nothing
 )
     results = Dict{Symbol,Any}()
     Utils.save_to!(results, config)
@@ -119,7 +119,7 @@ function run(config::ExperimentConfig,
         iter = ProgressBar(iter)
     end
 
-    cb = construct_callbacks(config, model, dataset, validation_dataset)
+    cb = construct_callbacks(config, model, dataset, test_dataset)
 
     solution = TPS.solve(problem, alg, iter; cb=cb)
     save_solution!(results, solution)
