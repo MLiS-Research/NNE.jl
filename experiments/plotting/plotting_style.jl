@@ -20,8 +20,8 @@ function get_plot_defaults(; columns=1, dpi=300, height_ratio=1)
         :size => fig_size,
         :resolution => fig_size,  # For compatibility
         :pt_per_unit => dpi / 72.0,
-        :linewidth => 2,
-        :markersize => 12,
+        :linewidth => 3,
+        :markersize => 18,
     )
 end
 
@@ -39,40 +39,74 @@ function calculate_axis_ticks(min_v, max_v; base=10, power_step=2, round_digits=
 end
 
 
-function plot_s_graph(s_values, τ_values, losses; new_plot=true, ticks_kwargs=Dict{Symbol,Any}(), kwargs...)
+function plot_s_graph(s_values, τ_values, losses; fig=nothing, gridpos=(1, 1), ticks_kwargs=Dict{Symbol,Any}(), show_ylabel=true, show_legend=true, linestyle=nothing, markershape=nothing, use_markers=true, extra_plot_kwargs=Dict{Symbol,Any}(), ylims=nothing, kwargs...)
     color_palette = ColorSchemes.matter
     colors = [color_palette[Int(round((i) / (length(τ_values)) * 256))] for i in 1:length(τ_values)]
 
     plot_defaults = get_plot_defaults()
     s_ticks = calculate_axis_ticks(minimum(s_values), maximum(s_values); ticks_kwargs...)
-    loss_ticks = calculate_axis_ticks(minimum(losses), maximum(losses); ticks_kwargs...)
 
-    # Create figure and axis
-    fig = Figure(; size=plot_defaults[:size])
-    ax = Axis(fig[1, 1],
+    # Use provided ylims or calculate from data
+    loss_min = isnothing(ylims) ? minimum(losses) : ylims[1]
+    loss_max = isnothing(ylims) ? maximum(losses) : ylims[2]
+    loss_ticks = calculate_axis_ticks(loss_min, loss_max; ticks_kwargs...)
+
+    # Create figure if not provided
+    if isnothing(fig)
+        fig = Figure(; size=plot_defaults[:size])
+    end
+
+    ax = Axis(fig[gridpos...],
         xlabel=L"s",
-        ylabel=L"\mathbb{E}[\overline{\mathcal{L}}] / \tau",
+        ylabel=show_ylabel ? L"\mathbb{E}[\overline{\mathcal{L}}] / \tau" : "",
         xscale=log10,
         yscale=log10,
         xticks=s_ticks,
-        yticks=loss_ticks
+        yticks=loss_ticks,
+        rightspinevisible=false,
+        topspinevisible=false,
+        xgridvisible=false,
+        ygridvisible=false
     )
+
+    # Set ylims if provided
+    if !isnothing(ylims)
+        CairoMakie.ylims!(ax, ylims...)
+    end
+
+    # Handle linestyle array or single value
+    linestyles = isnothing(linestyle) ? fill(:solid, length(τ_values)) : (linestyle isa AbstractArray ? linestyle : fill(linestyle, length(τ_values)))
+    markers = isnothing(markershape) ? fill(:circle, length(τ_values)) : (markershape isa AbstractArray ? markershape : fill(markershape, length(τ_values)))
 
     # Plot lines for each τ value
     for (i, τ) in enumerate(τ_values)
-        lines!(ax, s_values, losses[:, i],
-            color=colors[i],
-            linewidth=plot_defaults[:linewidth],
-            label="τ=$τ"
-        )
-        scatter!(ax, s_values, losses[:, i],
-            color=colors[i],
-            markersize=plot_defaults[:markersize]
-        )
+        if !use_markers
+            lines!(ax, s_values, losses[:, i],
+                color=colors[i],
+                linewidth=plot_defaults[:linewidth],
+                linestyle=linestyles[i],
+                label=LaTeXString("\$\\tau=$τ\$"),
+                extra_plot_kwargs...
+            )
+        else
+            scatterlines!(ax, s_values, losses[:, i],
+                color=colors[i],
+                linewidth=plot_defaults[:linewidth],
+                marker=markers[i],
+                linestyle=linestyles[i],
+                label=LaTeXString("\$\\tau=$τ\$"),
+                markersize=plot_defaults[:markersize],
+                strokecolor=:black,
+                strokewidth=1,
+                extra_plot_kwargs...
+            )
+        end
     end
 
-    # Add legend (top-right, no frame)
-    axislegend(ax, position=:rt, framevisible=false)
+    # Add legend if requested
+    if show_legend
+        axislegend(ax, position=:rt, framevisible=false)
+    end
 
     return fig
 end

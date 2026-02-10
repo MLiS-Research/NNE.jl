@@ -6,32 +6,10 @@ using TransitionPathSampling.MetropolisHastings
 using TransitionPathSampling.DiscreteTrajectory
 using Random
 using DataFrames
-using Measures: cm, mm, inch
 include("plotting_style.jl")
+include("plotting_utilities.jl")
 
 Makie = CairoMakie
-
-default_dpi() = 144
-default_fontsize() = 10
-function create_pub_fig(; dpi=default_dpi(), fontsize=default_fontsize(), num_panels=1, num_panels_y=1, kwargs...)
-    resolution = Int.(round.((8.6cm * num_panels, 8.6cm * 21 / 28 * num_panels_y) ./ (1inch) .* dpi))
-    pt_in_mm = 0.352777777777778mm
-    font_height = Int(round(fontsize * pt_in_mm / 1inch * dpi))
-    f = Figure(; fontsize=font_height, fonts=(; regular="Computer Modern"), resolution, dpi, kwargs...)
-    return f
-end
-function get_marker_shape_dict(tau_values::AbstractArray{Int})
-    possible_markers = [:circle, :diamond, :rect, :utriangle, :start4, :xcross]
-
-    mapping = Dict{Int,Symbol}(
-        t => m for (t, m) in Iterators.zip(tau_values, possible_markers)
-    )
-    return mapping
-end
-function get_marker_shape_dict(df::DataFrame)
-    taus = sort(unique(df[!, :tau]))
-    return get_marker_shape_dict(taus)
-end
 
 function generate_single_parameter_problem(τ, σ; rng=Random.GLOBAL_RNG)
     states = [[0.0]]

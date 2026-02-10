@@ -1,5 +1,8 @@
+include("plotting_utilities.jl")
 include("tps_linear_plotting.jl")
 include("../exact_linear_perceptron.jl")
+using CairoMakie
+using LaTeXStrings
 
 function plot_all()
     s_values, t_values, _, _ = load_processed_tps_data()
@@ -9,29 +12,63 @@ function plot_all()
     num_s_exact = 1000
     s_values_exact = exp_spaced_values(min_s, max_s, num_s_exact)
 
+    # Calculate losses for both sigma values
     unity_sigma_losses = reshape(calc_losses(s_values_exact, t_values, [1.0]), length(s_values_exact), length(t_values))
-    unity_sigma_results = (s_values_exact, t_values, nothing, nothing, unity_sigma_losses)
-
-    unity_sigma_plt = construct_exact_linear_data_loss_vs_s_plot(false; results=unity_sigma_results)
-
     small_sigma_losses = reshape(calc_losses(s_values_exact, t_values, [0.1]), length(s_values_exact), length(t_values))
-    small_sigma_results = (s_values_exact, t_values, nothing, nothing, small_sigma_losses)
-    small_sigma_plt = construct_exact_linear_data_loss_vs_s_plot(false; results=small_sigma_results)
+    tps_losses = load_processed_tps_data()[4]
 
-    empircal_plot = construct_tps_data_loss_vs_s_plot()
+    # Calculate common y-axis limits across all three datasets with padding for log scale
+    global_min_loss = min(minimum(small_sigma_losses), minimum(unity_sigma_losses), minimum(tps_losses))
+    global_max_loss = max(maximum(small_sigma_losses), maximum(unity_sigma_losses), maximum(tps_losses))
 
+    # Add multiplicative padding for log scale
+    padding_factor = 1.5
+    common_ylims = (global_min_loss / padding_factor, global_max_loss * padding_factor)
 
-    ylabel!(unity_sigma_plt, "")
-    ylabel!(empircal_plot, "")
+    # Create a combined figure with 3 panels
+    fig = create_pub_fig(num_panels=3, num_panels_y=1)
 
-    full_width_defaults = get_plot_defaults(; columns=2, height_ratio=0.25)
+    # Panel (a): Small sigma
+    plot_s_graph(s_values_exact, t_values, small_sigma_losses;
+        fig=fig, gridpos=(1, 1),
+        ticks_kwargs=Dict(:round_digits => 0, :power_step => 2),
+        linestyle=[(:solid, :dense), (:dash, :dense), (:dot, :dense), (:dashdot, :dense), (:dashdotdot, :dense)],
+        show_ylabel=true,
+        use_markers=false,
+        ylims=common_ylims
+    )
 
-    return plot(small_sigma_plt, unity_sigma_plt, empircal_plot; layout=(1, 3), title=[L"(a)" L"(b)" L"(c)"], titleloc=:left, full_width_defaults...)
+    # Panel (b): Unity sigma
+    plot_s_graph(s_values_exact, t_values, unity_sigma_losses;
+        fig=fig, gridpos=(1, 2),
+        ticks_kwargs=Dict(:round_digits => 0, :power_step => 2),
+        linestyle=[(:solid, :dense), (:dash, :dense), (:dot, :dense), (:dashdot, :dense), (:dashdotdot, :dense)],
+        show_ylabel=false,
+        use_markers=false,
+        ylims=common_ylims
+    )
+
+    # Panel (c): Empirical TPS data
+    markers = [:ltriangle, :diamond, :rect, :dtriangle, :circle]
+    plot_s_graph(s_values, t_values, tps_losses;
+        fig=fig, gridpos=(1, 3),
+        ticks_kwargs=Dict(:round_digits => 0, :power_step => 2),
+        linestyle=[(:solid, :dense), (:dash, :dense), (:dot, :dense), (:dashdot, :dense), (:dashdotdot, :dense)],
+        markershape=markers,
+        show_ylabel=false,
+        ylims=common_ylims
+    )
+
+    # Add panel labels
+    Label(fig[1, 1, TopLeft()], L"(a)", padding=(5, 5, 5, 5), halign=:left)
+    Label(fig[1, 2, TopLeft()], L"(b)", padding=(5, 5, 5, 5), halign=:left)
+    Label(fig[1, 3, TopLeft()], L"(c)", padding=(5, 5, 5, 5), halign=:left)
+
+    return fig
 end
 
 function plot_all_and_save()
-    plt = plot_all()
-
-    savefig(plt, "figures/all_linear_plots.pdf")
+    fig = plot_all()
+    save(joinpath("figures", "all_linear_plots.pdf"), fig)
 end
 
