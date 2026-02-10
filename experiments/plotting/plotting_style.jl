@@ -1,43 +1,27 @@
-using Plots
-pgfplotsx()
-using PGFPlotsX
+using CairoMakie
 using LaTeXStrings
-using Measures: mm
 using ColorSchemes
 
 
-function ensure_pgfplots_packages()
-    pgfplots_packages = ["amsmath", "amsfonts"]
-    for pkg in pgfplots_packages
-        ltx = "\\usepackage{$pkg}"
-        if ltx in PGFPlotsX.CUSTOM_PREAMBLE
-            continue
-        end
-        push!(PGFPlotsX.CUSTOM_PREAMBLE, ltx)
-    end
-end
-ensure_pgfplots_packages()
+function get_figure_size(; columns=1, dpi=300, height_ratio=1)
+    # Calculate size in mm
+    target_size = (86 * columns, 86 * columns * height_ratio)
+    # Convert mm to points (1 mm = 2.83465 pt)
+    mm_to_pt = 2.83465
+    size_pt = (target_size[1] * mm_to_pt, target_size[2] * mm_to_pt)
 
-function get_pixel_size(; columns=1, dpi=300, height_ratio=1)
-    target_size = (86mm * columns, 86mm * columns * height_ratio)
-    mm_to_inches = 0.03937008
-    pixel_size = (x -> Int(round(x))).((x -> x.value).(target_size) .* mm_to_inches .* dpi)
-
-    return pixel_size
+    return size_pt
 end
 
 function get_plot_defaults(; columns=1, dpi=300, height_ratio=1)
-    pixel_size = get_pixel_size(; columns, dpi, height_ratio)
+    fig_size = get_figure_size(; columns, dpi, height_ratio)
 
     return Dict{Symbol,Any}(
-        :dpi => dpi,
-        :thickness_scaling => 3,
-        :lw => 2,
-        :markersize => 4,
-        :legend_background_color => nothing,
-        :legend_foreground_color => nothing,
-        :grid => nothing,
-        :size => pixel_size
+        :size => fig_size,
+        :resolution => fig_size,  # For compatibility
+        :pt_per_unit => dpi / 72.0,
+        :linewidth => 2,
+        :markersize => 12,
     )
 end
 
@@ -58,28 +42,37 @@ end
 function plot_s_graph(s_values, τ_values, losses; new_plot=true, ticks_kwargs=Dict{Symbol,Any}(), kwargs...)
     color_palette = ColorSchemes.matter
     colors = [color_palette[Int(round((i) / (length(τ_values)) * 256))] for i in 1:length(τ_values)]
-    labels = reshape(["τ=$t" for t in τ_values], 1, :)
-    plot_fn = new_plot ? plot : plot!
+
     plot_defaults = get_plot_defaults()
     s_ticks = calculate_axis_ticks(minimum(s_values), maximum(s_values); ticks_kwargs...)
     loss_ticks = calculate_axis_ticks(minimum(losses), maximum(losses); ticks_kwargs...)
-    plt = plot_fn(s_values, losses, labels=labels;
-        yscale=:log10,
-        xscale=:log10,
-        color_palette=colors,
-        legend_position=:topright,
-        xticks=s_ticks,
-        yticks=loss_ticks,
-        plot_defaults...,
-        kwargs...
-    )
-    xlabel!(plt, L"s")
-    ylabel!(plt, L"\mathbb{E} \left [ \ \overline{\mathcal{L}} \ \right ] / \tau")
-    return plt
-end
 
-# Larger text size (x2-3)
-# Get rid of the box on the legend
-# Border on the figure
-# Turn off grid lines
-# Have different styles for each line
+    # Create figure and axis
+    fig = Figure(; size=plot_defaults[:size])
+    ax = Axis(fig[1, 1],
+        xlabel=L"s",
+        ylabel=L"\mathbb{E}[\overline{\mathcal{L}}] / \tau",
+        xscale=log10,
+        yscale=log10,
+        xticks=s_ticks,
+        yticks=loss_ticks
+    )
+
+    # Plot lines for each τ value
+    for (i, τ) in enumerate(τ_values)
+        lines!(ax, s_values, losses[:, i],
+            color=colors[i],
+            linewidth=plot_defaults[:linewidth],
+            label="τ=$τ"
+        )
+        scatter!(ax, s_values, losses[:, i],
+            color=colors[i],
+            markersize=plot_defaults[:markersize]
+        )
+    end
+
+    # Add legend (top-right, no frame)
+    axislegend(ax, position=:rt, framevisible=false)
+
+    return fig
+end
